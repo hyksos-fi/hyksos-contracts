@@ -2419,26 +2419,23 @@ contract YieldToken is ERC20("Banana", "BANANA") {
 
 	// called on transfers
 	function updateReward(address _from, address _to, uint256 _tokenId) external {
-		require(msg.sender == address(kongzContract));
-		if (_tokenId < 1001) {
-			uint256 time = min(block.timestamp, END);
-			uint256 timerFrom = lastUpdate[_from];
-			if (timerFrom > 0)
-				rewards[_from] += kongzContract.balanceOG(_from).mul(BASE_RATE.mul((time.sub(timerFrom)))).div(86400);
-			if (timerFrom != END)
-				lastUpdate[_from] = time;
-			if (_to != address(0)) {
-				uint256 timerTo = lastUpdate[_to];
-				if (timerTo > 0)
-					rewards[_to] += kongzContract.balanceOG(_to).mul(BASE_RATE.mul((time.sub(timerTo)))).div(86400);
-				if (timerTo != END)
-					lastUpdate[_to] = time;
-			}
+        uint256 time = min(block.timestamp, END);
+        uint256 timerFrom = lastUpdate[_from];
+        if (timerFrom > 0)
+            rewards[_from] += kongzContract.balanceOG(_from).mul(BASE_RATE.mul((time.sub(timerFrom)))).div(86400);
+        if (timerFrom != END)
+            lastUpdate[_from] = time;
+        if (_to != address(0)) {
+            uint256 timerTo = lastUpdate[_to];
+            if (timerTo > 0)
+                rewards[_to] += kongzContract.balanceOG(_to).mul(BASE_RATE.mul((time.sub(timerTo)))).div(86400);
+            if (timerTo != END)
+                lastUpdate[_to] = time;
 		}
 	}
 
 	function getReward(address _to) external {
-		require(msg.sender == address(kongzContract));
+        require(msg.sender == address(kongzContract));
 		uint256 reward = rewards[_to];
 		if (reward > 0) {
 			rewards[_to] = 0;
@@ -2495,6 +2492,7 @@ contract Kongz is ERC721Namable, Ownable {
 		kongz[1001] = Kong(0, block.timestamp);
 		kongz[1002] = Kong(0, block.timestamp);
 		kongz[1003] = Kong(0, block.timestamp);
+        balanceOG[msg.sender] = 3;
 		emit KongIncubated(1001, 0, 0);
 		emit KongIncubated(1002, 0, 0);
 		emit KongIncubated(1003, 0, 0);
@@ -2518,18 +2516,6 @@ contract Kongz is ERC721Namable, Ownable {
 	}
 
 	function isValidKong(uint256 _id) pure internal returns(bool) {
-		// making sure the ID fits the opensea format:
-		// first 20 bytes are the maker address
-		// next 7 bytes are the nft ID
-		// last 5 bytes the value associated to the ID, here will always be equal to 1
-		// There will only be 1000 kongz, we can fix boundaries and remove 5 ids that dont match kongz
-		if (_id >> 96 != 0x000000000000000000000000a2548e7ad6cee01eeb19d49bedb359aea3d8ad1d)
-			return false;
-		if (_id & 0x000000000000000000000000000000000000000000000000000000ffffffffff != 1)
-			return false;
-		uint256 id = (_id & 0x0000000000000000000000000000000000000000ffffffffffffff0000000000) >> 40;
-		if (id > 1005 || id == 262 || id == 197 || id == 75 || id == 34 || id == 18 || id == 0)
-			return false;
 		return true;
 	}
 
@@ -2553,7 +2539,6 @@ contract Kongz is ERC721Namable, Ownable {
 		require(isValidKong(_tokenId), "Not valid Kong");
 		uint256 id = returnCorrectId(_tokenId);
 		require(keccak256(abi.encodePacked(id, _genes)).toEthSignedMessageHash().recover(_sig) == SIGNER, "Sig not valid");
-	
 		kongz[id] = Kong(_genes, block.timestamp);
 		_mint(msg.sender, id);
 		OPENSEA_STORE.safeTransferFrom(msg.sender, burn, _tokenId, 1, "");
@@ -2601,21 +2586,15 @@ contract Kongz is ERC721Namable, Ownable {
 
 	function transferFrom(address from, address to, uint256 tokenId) public override {
 		yieldToken.updateReward(from, to, tokenId);
-		if (tokenId < 1001)
-		{
-			balanceOG[from]--;
-			balanceOG[to]++;
-		}
+		balanceOG[from]--;
+		balanceOG[to]++;
 		ERC721.transferFrom(from, to, tokenId);
 	}
 
 	function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public override {
 		yieldToken.updateReward(from, to, tokenId);
-		if (tokenId < 1001)
-		{
-			balanceOG[from]--;
-			balanceOG[to]++;
-		}
+		balanceOG[from]--;
+		balanceOG[to]++;
 		ERC721.safeTransferFrom(from, to, tokenId, _data);
 	}
 
