@@ -1,5 +1,5 @@
 const Bananas = artifacts.require("YieldToken");
 module.exports = function (deployer) {
-  deployer.deploy(Bananas, address);
+  deployer.deploy(Bananas, addrkongz);
 };
 
