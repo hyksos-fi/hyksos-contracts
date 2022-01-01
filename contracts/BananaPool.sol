@@ -10,6 +10,8 @@ interface IKongz is IERC721 {
     function getReward() external;
 }
 
+
+// wyjebać w osobny kontrakt, jeśli jeden będzie za duży
 contract DepositQueue {
     struct Deposit {
         uint256 amount;
@@ -40,6 +42,11 @@ contract DepositQueue {
         return depositQueue[topIndex];
     }
 
+    function setTopDepositAmount(uint256 _amount) internal {
+        require(!isDepositQueueEmpty());
+        depositQueue[topIndex].amount = _amount;
+    }
+
     function isDepositQueueEmpty() internal view returns(bool) {
         return depositQueue.length > topIndex;
     }
@@ -58,13 +65,24 @@ contract BananaPool is DepositQueue {
     struct Kong {
         uint256 timeDeposited;
         address owner;
+        Deposit[] lenders;
     }
 
     mapping(address => uint256) bananaBalance;
+    // active loans zamiast tego?
+    mapping(address => uint256) expectedPayout;
     mapping(uint256 => Kong) depositedKongs;
+    uint256 totalBananasBalance;
 
-    uint constant depositLength = 60 * 60 * 24 * 1;
-    uint256 constant public BASE_RATE = 10 ether; 
+    uint256 constant DEPOSIT_LENGTH_DAYS = 10;
+    uint256 constant DEPOSIT_LENGTH_SECONDS = DEPOSIT_LENGTH_DAYS * 86400;
+    uint256 constant BASE_RATE = 10 ether;
+    uint256 constant MIN_DEPOSIT = 1 * BASE_RATE; // do ustalenia
+    uint256 constant APY_PCTG = 80;
+    uint256 constant KONG_WORK_VALUE = BASE_RATE * DEPOSIT_LENGTH_DAYS;
+    uint256 constant LOAN_AMOUNT = KONG_WORK_VALUE * APY_PCTG / 100;
+    uint256 constant MAX_DEPOSITS_PER_KONG = LOAN_AMOUNT / MIN_DEPOSIT + 1;
+
 
     constructor(address _bananas, address _kongz) {
         kongz = IKongz(_kongz);
@@ -74,26 +92,31 @@ contract BananaPool is DepositQueue {
     function depositBananas(uint256 _amount) external {
         require(_amount > 0, "Amount must be positive");
         require(bananas.balanceOf(msg.sender) >= _amount, "Not enough bananas to deposit");
-        
         // possibly add allowance for the whole amount
         uint256 allowance = bananas.allowance(msg.sender, address(this));
         require(allowance >= _amount, "Not enough allowance");
         bananas.transferFrom(msg.sender, address(this), _amount);
         bananaBalance[msg.sender] = bananaBalance[msg.sender].add(_amount);
         pushDeposit(_amount, msg.sender);
+        totalBananasBalance += _amount;
         emit BananaDeposit(msg.sender, _amount);
     }
 
-    function withdrawBananas(uint256 _amount) external {
+    function withdrawBananas() external {
         require(bananaBalance[msg.sender] > 0, "No bananas to withdraw");
-        require(bananaBalance[msg.sender] >= _amount, "Requested more bananas than owned");
-        bananaBalance[msg.sender] = bananaBalance[msg.sender].sub(_amount);
-        bananas.transfer(msg.sender, _amount);
-        emit BananaWithdrawal(msg.sender, _amount);
+        uint256 amount = bananaBalance[msg.sender];
+        bananas.transfer(msg.sender, amount);
+        totalBananasBalance -= amount;
+        bananaBalance[msg.sender] = 0;
+        emit BananaWithdrawal(msg.sender, amount);
     }
 
-    function getBananaBalance() external view returns(uint256) {
-        return bananaBalance[msg.sender];
+    function getBananaBalance(address _addr) external view returns(uint256) {
+        return bananaBalance[_addr];
+    }
+
+    function getExpectedPayout(address _addr) external view returns(uint256) {
+        return expectedPayout[_addr];
     }
 
     function lendKong(uint256 _id) external {
@@ -101,22 +124,50 @@ contract BananaPool is DepositQueue {
         require(kongz.getApproved(_id) == address(this));
         // add safetransfer
         kongz.transferFrom(msg.sender, address(this), _id);
-        depositedKongs[_id] = Kong(block.timestamp, msg.sender);
-        // add bananas transfer algo here
+        bananas.transfer(msg.sender, LOAN_AMOUNT);
+        depositedKongs[_id].timeDeposited = block.timestamp;
+        depositedKongs[_id].owner = msg.sender;
+        selectLenders(_id);
         emit KongDeposit(msg.sender, _id);
     }
 
     function withdrawKong(uint256 _id) external {
         require(depositedKongs[_id].owner == msg.sender, "Not the kong owner");
-        require(depositedKongs[_id].timeDeposited.add(depositLength) < block.timestamp, "Too early to withdraw");
+        require(depositedKongs[_id].timeDeposited.add(DEPOSIT_LENGTH_SECONDS) < block.timestamp, "Too early to withdraw");
         kongz.getReward();
-        uint256 reward = calcReward(depositLength);
-        // add bananas requirements & transfer here
+        
         kongz.transferFrom(address(this), msg.sender, _id);
+        delete depositedKongs[_id];
 
     }
 
-    function calcReward(uint256 time) internal pure returns(uint256) {
-        return BASE_RATE.mul(time).div(86400);
+    function selectLenders(uint256 _id) internal {
+        require(totalBananasBalance >= LOAN_AMOUNT, "Not enough bananas to fund a loan");
+        uint256 selectedAmount = 0;
+        while (!isDepositQueueEmpty()) {
+            Deposit memory d = getTopDeposit();
+            if (bananaBalance[d.sender] < d.amount) {
+                popDeposit();
+                continue;
+            }
+            uint256 resultingAmount = selectedAmount.add(d.amount);
+            if (resultingAmount > LOAN_AMOUNT) {
+                uint256 usedAmount = LOAN_AMOUNT.sub(selectedAmount);
+                uint256 leftAmount = resultingAmount.sub(LOAN_AMOUNT);
+                setTopDepositAmount(leftAmount);
+                depositedKongs[_id].lenders.push(Deposit(usedAmount, d.sender));
+                bananaBalance[d.sender] -= usedAmount;
+                expectedPayout[d.sender] += usedAmount;
+                return;
+            } else {
+                depositedKongs[_id].lenders.push(Deposit(d.amount, d.sender));
+                selectedAmount += d.amount;
+                bananaBalance[d.sender] -= d.amount;
+                expectedPayout[d.sender] += d.amount;
+                popDeposit();
+            }
+        }
+        // if while loop does not return early, we don't have enough bananas.
+        revert("Not enough bananas to fund a loan");
     }
 }
