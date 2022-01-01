@@ -10,8 +10,43 @@ interface IKongz is IERC721 {
     function getReward() external;
 }
 
+contract DepositQueue {
+    struct Deposit {
+        uint256 amount;
+        address sender;
+    }
+
+    Deposit[] depositQueue;
+    uint256 topIndex;
+
+    constructor() {
+        topIndex = 0;
+    }
+
+    function pushDeposit(uint256 _amount, address _sender) internal {
+        depositQueue.push(Deposit(_amount, _sender));
+    }
+
+    function popDeposit() internal returns(Deposit memory) {
+        require(!isDepositQueueEmpty());
+        Deposit memory d = depositQueue[topIndex];
+        delete depositQueue[topIndex];
+        topIndex++;
+        return d;
+    }
+
+    function getTopDeposit() internal view returns(Deposit memory) {
+        require(!isDepositQueueEmpty());
+        return depositQueue[topIndex];
+    }
+
+    function isDepositQueueEmpty() internal view returns(bool) {
+        return depositQueue.length > topIndex;
+    }
+}
+
 // remember IERC721Receiver
-contract BananaPool {
+contract BananaPool is DepositQueue {
     using SafeMath for uint256;
     event BananaDeposit(address indexed addr, uint256 value);
     event BananaWithdrawal(address indexed addr, uint256 value);
@@ -27,7 +62,7 @@ contract BananaPool {
 
     mapping(address => uint256) bananaBalance;
     mapping(uint256 => Kong) depositedKongs;
-    
+
     uint constant depositLength = 60 * 60 * 24 * 1;
     uint256 constant public BASE_RATE = 10 ether; 
 
@@ -45,6 +80,7 @@ contract BananaPool {
         require(allowance >= _amount, "Not enough allowance");
         bananas.transferFrom(msg.sender, address(this), _amount);
         bananaBalance[msg.sender] = bananaBalance[msg.sender].add(_amount);
+        pushDeposit(_amount, msg.sender);
         emit BananaDeposit(msg.sender, _amount);
     }
 
