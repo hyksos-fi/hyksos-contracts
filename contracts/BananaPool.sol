@@ -58,6 +58,7 @@ contract BananaPool is DepositQueue {
     event BananaDeposit(address indexed addr, uint256 value);
     event BananaWithdrawal(address indexed addr, uint256 value);
     event KongDeposit(address indexed addr, uint256 id);
+    event KongWithdrawal(address indexed addr, uint256 id);
     
     IKongz kongz;
     IERC20 bananas;
@@ -69,8 +70,6 @@ contract BananaPool is DepositQueue {
     }
 
     mapping(address => uint256) bananaBalance;
-    // active loans zamiast tego?
-    mapping(address => uint256) expectedPayout;
     mapping(uint256 => Kong) depositedKongs;
     uint256 totalBananasBalance;
 
@@ -81,7 +80,6 @@ contract BananaPool is DepositQueue {
     uint256 constant APY_PCTG = 80;
     uint256 constant KONG_WORK_VALUE = BASE_RATE * DEPOSIT_LENGTH_DAYS;
     uint256 constant LOAN_AMOUNT = KONG_WORK_VALUE * APY_PCTG / 100;
-    uint256 constant MAX_DEPOSITS_PER_KONG = LOAN_AMOUNT / MIN_DEPOSIT + 1;
 
 
     constructor(address _bananas, address _kongz) {
@@ -115,10 +113,6 @@ contract BananaPool is DepositQueue {
         return bananaBalance[_addr];
     }
 
-    function getExpectedPayout(address _addr) external view returns(uint256) {
-        return expectedPayout[_addr];
-    }
-
     function lendKong(uint256 _id) external {
         require(kongz.ownerOf(_id) == msg.sender, "Not the Kong owner");
         require(kongz.getApproved(_id) == address(this));
@@ -134,11 +128,16 @@ contract BananaPool is DepositQueue {
     function withdrawKong(uint256 _id) external {
         require(depositedKongs[_id].owner == msg.sender, "Not the kong owner");
         require(depositedKongs[_id].timeDeposited.add(DEPOSIT_LENGTH_SECONDS) < block.timestamp, "Too early to withdraw");
+        uint256 reward = calcReward(block.timestamp.sub(depositedKongs[_id].timeDeposited));
         kongz.getReward();
-        
-        kongz.transferFrom(address(this), msg.sender, _id);
+        for (uint i = 0; i < depositedKongs[_id].lenders.length; i++) {
+            Deposit memory d = depositedKongs[_id].lenders[i];
+            uint256 payback = d.amount.mul(100).div(APY_PCTG).mul(reward).div(KONG_WORK_VALUE);
+            bananas.transfer(d.sender, payback);
+        }
+        kongz.transferFrom(address(this), depositedKongs[_id].owner, _id);
         delete depositedKongs[_id];
-
+        emit KongWithdrawal(msg.sender, _id);
     }
 
     function selectLenders(uint256 _id) internal {
@@ -157,17 +156,19 @@ contract BananaPool is DepositQueue {
                 setTopDepositAmount(leftAmount);
                 depositedKongs[_id].lenders.push(Deposit(usedAmount, d.sender));
                 bananaBalance[d.sender] -= usedAmount;
-                expectedPayout[d.sender] += usedAmount;
                 return;
             } else {
                 depositedKongs[_id].lenders.push(Deposit(d.amount, d.sender));
                 selectedAmount += d.amount;
                 bananaBalance[d.sender] -= d.amount;
-                expectedPayout[d.sender] += d.amount;
                 popDeposit();
             }
         }
         // if while loop does not return early, we don't have enough bananas.
         revert("Not enough bananas to fund a loan");
+    }
+
+    function calcReward(uint256 time) internal pure returns(uint256) {
+        return BASE_RATE.mul(time).div(86400);
     }
 }
