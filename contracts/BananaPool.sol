@@ -48,7 +48,7 @@ contract DepositQueue {
     }
 
     function isDepositQueueEmpty() internal view returns(bool) {
-        return depositQueue.length > topIndex;
+        return depositQueue.length <= topIndex;
     }
 }
 
@@ -94,7 +94,7 @@ contract BananaPool is DepositQueue {
         uint256 allowance = bananas.allowance(msg.sender, address(this));
         require(allowance >= _amount, "Not enough allowance");
         bananas.transferFrom(msg.sender, address(this), _amount);
-        bananaBalance[msg.sender] = bananaBalance[msg.sender].add(_amount);
+        bananaBalance[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalBananasBalance += _amount;
         emit BananaDeposit(msg.sender, _amount);
@@ -112,6 +112,10 @@ contract BananaPool is DepositQueue {
     function getBananaBalance(address _addr) external view returns(uint256) {
         return bananaBalance[_addr];
     }
+
+    function getTotalBananas() external view returns(uint256) {
+        return totalBananasBalance;
+    } 
 
     function lendKong(uint256 _id) external {
         require(kongz.ownerOf(_id) == msg.sender, "Not the Kong owner");
@@ -141,31 +145,43 @@ contract BananaPool is DepositQueue {
     }
 
     function selectLenders(uint256 _id) internal {
-        require(totalBananasBalance >= LOAN_AMOUNT, "Not enough bananas to fund a loan");
+        require(totalBananasBalance >= LOAN_AMOUNT, "Not enough bananas to fund a loan e1");
         uint256 selectedAmount = 0;
+        require(!isDepositQueueEmpty(), "Deposit queue empty");
         while (!isDepositQueueEmpty()) {
             Deposit memory d = getTopDeposit();
-            if (bananaBalance[d.sender] < d.amount) {
+            if (bananaBalance[d.sender] == 0) {
                 popDeposit();
                 continue;
             }
-            uint256 resultingAmount = selectedAmount.add(d.amount);
+            uint256 depositAmount;
+            if (bananaBalance[d.sender] < d.amount) {
+                depositAmount = bananaBalance[d.sender];
+            } else {
+                depositAmount = d.amount;
+            }
+            uint256 resultingAmount = selectedAmount.add(depositAmount);
             if (resultingAmount > LOAN_AMOUNT) {
                 uint256 usedAmount = LOAN_AMOUNT.sub(selectedAmount);
-                uint256 leftAmount = resultingAmount.sub(LOAN_AMOUNT);
+                uint256 leftAmount = depositAmount.sub(usedAmount);
                 setTopDepositAmount(leftAmount);
                 depositedKongs[_id].lenders.push(Deposit(usedAmount, d.sender));
                 bananaBalance[d.sender] -= usedAmount;
+                totalBananasBalance -= usedAmount;
                 return;
             } else {
-                depositedKongs[_id].lenders.push(Deposit(d.amount, d.sender));
-                selectedAmount += d.amount;
-                bananaBalance[d.sender] -= d.amount;
+                depositedKongs[_id].lenders.push(Deposit(depositAmount, d.sender));
+                selectedAmount = resultingAmount;
+                bananaBalance[d.sender] -= depositAmount;
+                totalBananasBalance -= depositAmount;
                 popDeposit();
+                if (resultingAmount == LOAN_AMOUNT) {
+                    return;
+                }
             }
         }
         // if while loop does not return early, we don't have enough bananas.
-        revert("Not enough bananas to fund a loan");
+        revert("Not enough bananas to fund a loan e2");
     }
 
     function calcReward(uint256 time) internal pure returns(uint256) {

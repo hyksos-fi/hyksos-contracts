@@ -8,9 +8,8 @@ module.exports = async function (deployer) {
   await deployer.deploy(Pool, Bananas.address, Kongz.address, {from: arguments[2][0]});
   
   KongzDep = await Kongz.deployed();
-
-  KongzDep.setYieldToken(Bananas.address, {from: arguments[2][0]});
-
+  await KongzDep.setYieldToken(Bananas.address, {from: arguments[2][0]});
+  
   console.log("Kongz: %s \nBananas: %s \nPool: %s \n", Kongz.address, Bananas.address, Pool.address);
 };
 
