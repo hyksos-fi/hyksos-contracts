@@ -73,17 +73,16 @@ contract("BananaPool test", async accounts => {
     
 
     console.log("deposit 1000 bananas into the pool from account 2 and verify amount")
-    await bananas.approve(pool.address, web3.utils.toWei('1000', 'ether'), {from: accounts[1]})
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('1000', 'ether'));
     assert.equal((await bananas.balanceOf(accounts[2])).toString(10), "0");
-    await bananas.approve(pool.address, web3.utils.toWei('1000', 'ether'), {from: accounts[1]})
-    await pool.depositBananas(web3.utils.toWei('1000', 'ether'), { from: accounts[1]});
+    const bananasApprovalSummary = await bananas.approve(pool.address, web3.utils.toWei('1000', 'ether'), {from: accounts[1]})
+    const bananasDepositSummary = await pool.depositBananas(web3.utils.toWei('1000', 'ether'), { from: accounts[1]});
     assert.equal((await pool.getBananaBalance(accounts[1])).toString(10), web3.utils.toWei('1000', 'ether'));
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('0', 'ether'));
     
     console.log("deposit a kong into the pool from account 1")
-    await kongz.approve(Pool.address, 1001,  {from: accounts[2]});
-    await pool.lendKong(1001, {from: accounts[2], gas: 1e6})
+    const kongApprovalSummary = await kongz.approve(Pool.address, 1001,  {from: accounts[2]});
+    const kongLendSummary = await pool.lendKong(1001, {from: accounts[2], gas: 1e6})
     
     console.log("verify that the Kong lender has received his reward")
     assert.equal((await bananas.balanceOf(accounts[2])).toString(10), web3.utils.toWei('80', 'ether'));
@@ -94,13 +93,18 @@ contract("BananaPool test", async accounts => {
     
     console.log("withdraw a kong after the due date")
     web3.evm.increaseTime(5 * 86400 + 1);
-    await pool.withdrawKong(1001, {from: accounts[2], gas: 1e6})
+    const kongWithdrawalSummary = await pool.withdrawKong(1001, {from: accounts[2], gas: 1e6})
 
     console.log("verify that the banana donor has received their reward.")
     assert((await bananas.balanceOf(accounts[1])) >= web3.utils.toBN(web3.utils.toWei('100', 'ether')));
 
     console.log("verify there's a correct amount of bananas left on the pool")
     assert((await pool.getBananaBalance(accounts[1])).toString(10) == web3.utils.toWei('920', 'ether'));
+
+    console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d\nBananas deposit: %d", 
+                kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
+                kongWithdrawalSummary['receipt']['cumulativeGasUsed'], 
+                bananasApprovalSummary['receipt']['cumulativeGasUsed'] + bananasDepositSummary['receipt']['cumulativeGasUsed'] )
   });
 
   it("Complex Kong deposits", async () => {
@@ -118,7 +122,6 @@ contract("BananaPool test", async accounts => {
       web3.evm.increaseTime(10 * 86400 + 1);
       await pool.withdrawKong(1001, {from: accounts[2], gas: 1e6})
     }
-    process.stdout.write("\n");
     console.log("13th deposit shouldn't be possible, (40 bananas left in the pool)")
     assert.equal((await pool.getTotalBananas()).toString(10), web3.utils.toWei('40', 'ether'));
     await assertRevert(pool.lendKong(1001, {from: accounts[2], gas: 1e6}))
@@ -147,15 +150,15 @@ contract("BananaPool test", async accounts => {
     }
 
     console.log("Withdraw bananas of account 9 to make a gap in deposit queue. Send them to account 1")
-    await pool.withdrawBananas({ from: accounts[9]});
+    const bananasWithdrawalSummary = await pool.withdrawBananas({ from: accounts[9]});
     await bananas.transfer(accounts[1], web3.utils.toWei("10", "ether"), {from: accounts[9]});
     assert.equal((await bananas.balanceOf(accounts[9])).toString(10), "0");
     
     console.log("Deposit Kong once again and verify that addresses 7, 8, 10, 11, 12, 13, 14, 15 received rewards (14th deposit)")
-    await kongz.approve(Pool.address, 1001,  {from: accounts[2]});
-    await pool.lendKong(1001, {from: accounts[2], gas: 1e6})
+    const kongApprovalSummary = await kongz.approve(Pool.address, 1001,  {from: accounts[2]});
+    const kongLendSummary = await pool.lendKong(1001, {from: accounts[2], gas: 1e6})
     web3.evm.increaseTime(10 * 86400 + 1);
-    await pool.withdrawKong(1001, {from: accounts[2], gas: 1e6})
+    const kongWithdrawalSummary = await pool.withdrawKong(1001, {from: accounts[2], gas: 1e6})
     for (const i of [7, 8, 10, 11, 12, 13, 14, 15]) {
       assert(await bananas.balanceOf(accounts[i]) >= web3.utils.toBN(web3.utils.toWei('12.5', 'ether')), "No reward on account " + i);
     }
@@ -171,6 +174,11 @@ contract("BananaPool test", async accounts => {
 
     console.log("verify that account 2 has received 80 * 14 bananas in total")
     assert(await bananas.balanceOf(accounts[2]) <= web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether')), "Wrong reward");
+
+    console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d\nBananas withdrawal: %d", 
+                kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
+                kongWithdrawalSummary['receipt']['cumulativeGasUsed'], 
+                bananasWithdrawalSummary['receipt']['cumulativeGasUsed'] )
   });
 
 });
