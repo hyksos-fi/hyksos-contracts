@@ -21,40 +21,37 @@ contract DepositQueue {
     Deposit[] depositQueue;
     uint256 topIndex;
 
-    constructor() {
-        topIndex = 0;
+    function isDepositQueueEmpty() internal view returns(bool) {
+        return depositQueue.length <= topIndex;
+    }
+
+    modifier nonEmpty() {
+        require(!isDepositQueueEmpty());
+        _;
     }
 
     function pushDeposit(uint256 _amount, address _sender) internal {
         depositQueue.push(Deposit(_amount, _sender));
     }
 
-    function popDeposit() internal returns(Deposit memory) {
-        require(!isDepositQueueEmpty());
-        Deposit memory d = depositQueue[topIndex];
+    function popDeposit() internal nonEmpty returns(Deposit memory) {
         delete depositQueue[topIndex];
         topIndex++;
-        return d;
     }
 
-    function getTopDeposit() internal view returns(Deposit memory) {
-        require(!isDepositQueueEmpty());
+    function getTopDeposit() internal nonEmpty view returns(Deposit memory) {
         return depositQueue[topIndex];
     }
 
-    function setTopDepositAmount(uint256 _amount) internal {
-        require(!isDepositQueueEmpty());
+    function setTopDepositAmount(uint256 _amount) internal nonEmpty {
         depositQueue[topIndex].amount = _amount;
-    }
-
-    function isDepositQueueEmpty() internal view returns(bool) {
-        return depositQueue.length <= topIndex;
     }
 }
 
 // remember IERC721Receiver
 contract BananaPool is DepositQueue {
     using SafeMath for uint256;
+
     event BananaDeposit(address indexed addr, uint256 value);
     event BananaWithdrawal(address indexed addr, uint256 value);
     event KongDeposit(address indexed addr, uint256 id);
@@ -77,9 +74,9 @@ contract BananaPool is DepositQueue {
     uint256 constant DEPOSIT_LENGTH_SECONDS = DEPOSIT_LENGTH_DAYS * 86400;
     uint256 constant BASE_RATE = 10 ether;
     uint256 constant MIN_DEPOSIT = 1 * BASE_RATE; // do ustalenia
-    uint256 constant APY_PCTG = 80;
+    uint256 constant ROI_PCTG = 80;
     uint256 constant KONG_WORK_VALUE = BASE_RATE * DEPOSIT_LENGTH_DAYS;
-    uint256 constant LOAN_AMOUNT = KONG_WORK_VALUE * APY_PCTG / 100;
+    uint256 constant LOAN_AMOUNT = KONG_WORK_VALUE * ROI_PCTG / 100;
 
 
     constructor(address _bananas, address _kongz) {
@@ -109,14 +106,6 @@ contract BananaPool is DepositQueue {
         emit BananaWithdrawal(msg.sender, amount);
     }
 
-    function getBananaBalance(address _addr) external view returns(uint256) {
-        return bananaBalance[_addr];
-    }
-
-    function getTotalBananas() external view returns(uint256) {
-        return totalBananasBalance;
-    } 
-
     function lendKong(uint256 _id) external {
         require(kongz.ownerOf(_id) == msg.sender, "Not the Kong owner");
         require(kongz.getApproved(_id) == address(this));
@@ -136,7 +125,7 @@ contract BananaPool is DepositQueue {
         kongz.getReward();
         for (uint i = 0; i < depositedKongs[_id].lenders.length; i++) {
             Deposit memory d = depositedKongs[_id].lenders[i];
-            uint256 payback = d.amount.mul(100).div(APY_PCTG).mul(reward).div(KONG_WORK_VALUE);
+            uint256 payback = d.amount.mul(100).div(ROI_PCTG).mul(reward).div(KONG_WORK_VALUE);
             bananas.transfer(d.sender, payback);
         }
         kongz.transferFrom(address(this), depositedKongs[_id].owner, _id);
@@ -145,9 +134,8 @@ contract BananaPool is DepositQueue {
     }
 
     function selectLenders(uint256 _id) internal {
-        require(totalBananasBalance >= LOAN_AMOUNT, "Not enough bananas to fund a loan e1");
+        require(totalBananasBalance >= LOAN_AMOUNT, "Not enough bananas to fund a loan.");
         uint256 selectedAmount = 0;
-        require(!isDepositQueueEmpty(), "Deposit queue empty");
         while (!isDepositQueueEmpty()) {
             Deposit memory d = getTopDeposit();
             if (bananaBalance[d.sender] == 0) {
@@ -181,10 +169,24 @@ contract BananaPool is DepositQueue {
             }
         }
         // if while loop does not return early, we don't have enough bananas.
-        revert("Not enough bananas to fund a loan e2");
+        revert("Not enough deposits");
     }
 
     function calcReward(uint256 time) internal pure returns(uint256) {
         return BASE_RATE.mul(time).div(86400);
     }
+
+    function getBananaBalance(address _addr) external view returns(uint256) {
+        return bananaBalance[_addr];
+    }
+
+    function getTotalBananas() external view returns(uint256) {
+        return totalBananasBalance;
+    }
+
+    function getDepositedKong(uint256 _id) external view returns(Kong memory) {
+        return depositedKongs[_id];
+    }
+
+
 }
