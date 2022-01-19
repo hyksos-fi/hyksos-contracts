@@ -11,7 +11,6 @@ interface IKongz is IERC721 {
 }
 
 
-// wyjebać w osobny kontrakt, jeśli jeden będzie za duży
 contract DepositQueue {
     struct Deposit {
         uint256 amount;
@@ -48,7 +47,7 @@ contract DepositQueue {
     }
 }
 
-// remember IERC721Receiver
+
 contract BananaPool is DepositQueue {
     using SafeMath for uint256;
 
@@ -109,7 +108,6 @@ contract BananaPool is DepositQueue {
     function lendKong(uint256 _id) external {
         require(kongz.ownerOf(_id) == msg.sender, "Not the Kong owner");
         require(kongz.getApproved(_id) == address(this));
-        // add safetransfer
         kongz.transferFrom(msg.sender, address(this), _id);
         bananas.transfer(msg.sender, LOAN_AMOUNT);
         depositedKongs[_id].timeDeposited = block.timestamp;
