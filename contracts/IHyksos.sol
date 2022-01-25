@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 interface IHyksos {
-    function depositErc20(uint256 _amount) external;
+    function depositErc20(uint256 _amount, bool _isAutoCompoundOn) external;
     function withdrawErc20(uint256 _amount) external;
     function depositNft(uint256 _id) external;
     function withdrawNft(uint256 _id) external;

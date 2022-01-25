@@ -27,6 +27,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
 
     mapping(address => uint256) bananaBalance;
     mapping(uint256 => Kong) depositedKongs;
+    mapping(address => bool) isAutoCompoundOff; // interpret 0 as ON, to use default values more efficiently. Use normal mapping true=ON everywhere outside this map.
     uint256 totalBananasBalance;
 
     uint256 constant DEPOSIT_LENGTH_DAYS = 10; // TBD
@@ -43,7 +44,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         bananas = IERC20(_bananas);
     }
 
-    function depositErc20(uint256 _amount) external override {
+    function depositErc20(uint256 _amount, bool _isAutoCompoundOn) external override {
         require(_amount > 0, "Amount must be positive.");
         require(bananas.balanceOf(msg.sender) >= _amount, "Not enough bananas to deposit.");
         uint256 allowance = bananas.allowance(msg.sender, address(this));
@@ -52,6 +53,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         bananaBalance[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalBananasBalance += _amount;
+        setAutoCompoundStrategy(_isAutoCompoundOn);
         emit Erc20Deposit(msg.sender, _amount);
     }
 
@@ -79,34 +81,44 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         require(depositedKongs[_id].timeDeposited.add(DEPOSIT_LENGTH_SECONDS) < block.timestamp, "Too early to withdraw.");
         uint256 reward = calcReward(block.timestamp.sub(depositedKongs[_id].timeDeposited));
         kongz.getReward();
+        distributeRewards(reward, _id);
+        kongz.transferFrom(address(this), depositedKongs[_id].owner, _id);
+        emit NftWithdrawal(depositedKongs[_id].owner, _id);
+        delete depositedKongs[_id];
+    }
+
+    function setAutoCompoundStrategy(bool _isAutoCompoundOn) public {
+        if (isAutoCompoundOff[msg.sender] == _isAutoCompoundOn) {
+            isAutoCompoundOff[msg.sender] = !_isAutoCompoundOn;
+        }
+    }
+
+    function distributeRewards(uint256 _reward, uint256 _id) internal {
         // Most probable scenario, so we check it first
         if (msg.sender == depositedKongs[_id].owner) {
-            withdrawNftAndShareRewardEqually(_id, reward);
+            withdrawNftAndShareRewardEqually(_id, _reward);
         } else {
             bool payoutsDone = false;
             // Check if the caller is one of the shareholders
             for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
                 if (msg.sender == depositedKongs[_id].shareholders[i].sender) {
-                    withdrawNftAndRewardClaimant(_id, reward, i);
+                    withdrawNftAndRewardClaimant(_id, _reward, i);
                     payoutsDone = true;
                     break;
                 }
             }
             // Method called from account not involved in this lend. Share rewards equally.
             if (!payoutsDone) {
-                withdrawNftAndShareRewardEqually(_id, reward);
+                withdrawNftAndShareRewardEqually(_id, _reward);
             }
         }
-        kongz.transferFrom(address(this), depositedKongs[_id].owner, _id);
-        emit NftWithdrawal(depositedKongs[_id].owner, _id);
-        delete depositedKongs[_id];
     }
 
     function withdrawNftAndShareRewardEqually(uint256 _id, uint256 _reward) internal {
         for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
             Deposit memory d = depositedKongs[_id].shareholders[i];
             uint256 payback = d.amount.mul(100).div(ROI_PCTG).mul(_reward).div(KONG_WORK_VALUE);
-            bananas.transfer(d.sender, payback);
+            payRewardAccordingToStrategy(d.sender, payback);
         }
     }
 
@@ -117,7 +129,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
             if (i == _claimantId) {
                 payback += _reward - KONG_WORK_VALUE;
             }
-            bananas.transfer(d.sender, payback);
+            payRewardAccordingToStrategy(d.sender, payback);
         }
     }
 
@@ -160,6 +172,16 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         revert("Not enough deposits.");
     }
 
+    function payRewardAccordingToStrategy(address _receiver, uint256 _amount) internal {
+        if (isAutoCompoundOff[_receiver]) {
+            bananas.transfer(_receiver, _amount);
+        } else {
+            bananaBalance[_receiver] += _amount;
+            pushDeposit(_amount, _receiver);
+            totalBananasBalance += _amount;
+        }
+    }
+
     function calcReward(uint256 time) internal pure returns(uint256) {
         return BASE_RATE.mul(time).div(86400);
     }
@@ -174,6 +196,10 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
 
     function depositedKong(uint256 _id) external view returns(Kong memory) {
         return depositedKongs[_id];
+    }
+
+    function autoCompound(address _addr) external view returns(bool) {
+        return !isAutoCompoundOff[_addr];
     }
 
 }
