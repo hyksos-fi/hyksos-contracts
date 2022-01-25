@@ -55,13 +55,13 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         emit Erc20Deposit(msg.sender, _amount);
     }
 
-    function withdrawErc20() external override {
+    function withdrawErc20(uint256 _amount) external override {
         require(bananaBalance[msg.sender] > 0, "No bananas to withdraw.");
-        uint256 amount = bananaBalance[msg.sender];
-        bananas.transfer(msg.sender, amount);
-        totalBananasBalance -= amount;
+        require(_amount <= bananaBalance[msg.sender], "Withdrawal amount too big.");
+        bananas.transfer(msg.sender, _amount);
+        totalBananasBalance -= _amount;
         bananaBalance[msg.sender] = 0;
-        emit Erc20Withdrawal(msg.sender, amount);
+        emit Erc20Withdrawal(msg.sender, _amount);
     }
 
     function depositNft(uint256 _id) external override {
@@ -76,18 +76,49 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     }
 
     function withdrawNft(uint256 _id) external override {
-        require(depositedKongs[_id].owner == msg.sender, "Not the kong owner.");
         require(depositedKongs[_id].timeDeposited.add(DEPOSIT_LENGTH_SECONDS) < block.timestamp, "Too early to withdraw.");
         uint256 reward = calcReward(block.timestamp.sub(depositedKongs[_id].timeDeposited));
         kongz.getReward();
-        for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
-            Deposit memory d = depositedKongs[_id].shareholders[i];
-            uint256 payback = d.amount.mul(100).div(ROI_PCTG).mul(reward).div(KONG_WORK_VALUE);
-            bananas.transfer(d.sender, payback);
+        // Most probable scenario, so we check it first
+        if (msg.sender == depositedKongs[_id].owner) {
+            withdrawNftAndShareRewardEqually(_id, reward);
+        } else {
+            bool payoutsDone = false;
+            // Check if the caller is one of the shareholders
+            for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
+                if (msg.sender == depositedKongs[_id].shareholders[i].sender) {
+                    withdrawNftAndRewardClaimant(_id, reward, i);
+                    payoutsDone = true;
+                    break;
+                }
+            }
+            // Method called from account not involved in this lend. Share rewards equally.
+            if (!payoutsDone) {
+                withdrawNftAndShareRewardEqually(_id, reward);
+            }
         }
         kongz.transferFrom(address(this), depositedKongs[_id].owner, _id);
+        emit NftWithdrawal(depositedKongs[_id].owner, _id);
         delete depositedKongs[_id];
-        emit NftWithdrawal(msg.sender, _id);
+    }
+
+    function withdrawNftAndShareRewardEqually(uint256 _id, uint256 _reward) internal {
+        for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
+            Deposit memory d = depositedKongs[_id].shareholders[i];
+            uint256 payback = d.amount.mul(100).div(ROI_PCTG).mul(_reward).div(KONG_WORK_VALUE);
+            bananas.transfer(d.sender, payback);
+        }
+    }
+
+    function withdrawNftAndRewardClaimant(uint256 _id, uint256 _reward, uint256 _claimantId) internal {
+        for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
+            Deposit memory d = depositedKongs[_id].shareholders[i];
+            uint256 payback = d.amount.mul(100).div(ROI_PCTG);
+            if (i == _claimantId) {
+                payback += _reward - KONG_WORK_VALUE;
+            }
+            bananas.transfer(d.sender, payback);
+        }
     }
 
     function selectShareholders(uint256 _id) internal {

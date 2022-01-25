@@ -54,7 +54,7 @@ contract("HyksosCyberkongz test", async accounts => {
     await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
-    await hyksos.withdrawErc20({ from: accounts[1]});
+    await hyksos.withdrawErc20(await hyksos.erc20Balance(accounts[1]), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), "0");
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('1000', 'ether'));
   });
@@ -105,6 +105,11 @@ contract("HyksosCyberkongz test", async accounts => {
                 kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
                 kongWithdrawalSummary['receipt']['cumulativeGasUsed'], 
                 bananasApprovalSummary['receipt']['cumulativeGasUsed'] + bananasDepositSummary['receipt']['cumulativeGasUsed'] )
+
+
+    /* Deposit queue state after the test:
+    [0] accounts[1] 920
+    */
   });
 
   it("Complex Kong deposits", async () => {
@@ -150,7 +155,7 @@ contract("HyksosCyberkongz test", async accounts => {
     }
 
     console.log("Withdraw bananas of account 9 to make a gap in deposit queue. Send them to account 1")
-    const bananasWithdrawalSummary = await hyksos.withdrawErc20({ from: accounts[9]});
+    const bananasWithdrawalSummary = await hyksos.withdrawErc20(await hyksos.erc20Balance(accounts[9]), { from: accounts[9]});
     await bananas.transfer(accounts[1], web3.utils.toWei("10", "ether"), {from: accounts[9]});
     assert.equal((await bananas.balanceOf(accounts[9])).toString(10), "0");
     
@@ -167,7 +172,7 @@ contract("HyksosCyberkongz test", async accounts => {
       assert((await bananas.balanceOf(accounts[i])).toString(10) == "0", "Unexpected reward on account " + i + ": " + (await bananas.balanceOf(accounts[i])).toString(10)); // refactor);
     }
 
-    console.log("verify that no account has received a too big reward")
+    console.log("verify that no account has received a reward too big")
     for (let i = 3; i < 20; i++) {
       assert(await bananas.balanceOf(accounts[i]) <= web3.utils.toBN(web3.utils.toWei('12.6', 'ether')), "More than single reward on account " + i + ": " + (await bananas.balanceOf(accounts[i])).toString(10)); // refactor);
     }
@@ -179,6 +184,51 @@ contract("HyksosCyberkongz test", async accounts => {
                 kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
                 kongWithdrawalSummary['receipt']['cumulativeGasUsed'], 
                 bananasWithdrawalSummary['receipt']['cumulativeGasUsed'] )
+  });
+
+    /* Deposit queue state after the test:
+    [0] accounts[16] 10
+    [1] accounts[17] 10
+    [2] accounts[18] 10
+    [3] accounts[19] 10
+    */
+
+  it("Late Kong withdrawal", async () => {
+    const kongz = await Kongz.deployed();
+    const bananas = await Bananas.deployed();
+    const hyksos = await Hyksos.deployed();
+
+    console.log("Transfer 40 more bananas from account 1 to 19, then deposit them into the pool.")
+    await bananas.transfer(accounts[19], web3.utils.toWei('40', 'ether'), {from: accounts[1], gas: 1e6})
+    await bananas.approve(hyksos.address, web3.utils.toWei('40', 'ether'), {from: accounts[19]})
+    await hyksos.depositErc20(web3.utils.toWei('40', 'ether'), { from: accounts[19]});
+    assert.equal((await hyksos.erc20Balance(accounts[19])).toString(10), web3.utils.toWei('50', 'ether'));
+    assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('80', 'ether'));
+    
+    console.log("Deposit Kong")
+    const kongApprovalSummary = await kongz.approve(Hyksos.address, 1001,  {from: accounts[2]});
+    const kongLendSummary = await hyksos.depositNft(1001, {from: accounts[2], gas: 1e6})
+
+    console.log("Increase time by twice the deposit length.")
+    web3.evm.increaseTime(20 * 86400 + 1);
+
+    console.log("Withdraw NFT from one of the shareholder accounts and verify rewards.")
+    const kongWithdrawalSummary = await hyksos.withdrawNft(1001, {from: accounts[16], gas: 1e6})
+    assert(await bananas.balanceOf(accounts[16]) >= web3.utils.toBN(web3.utils.toWei('112.5', 'ether')), "Reward too small on account 16" + ": " + (await bananas.balanceOf(accounts[16])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[16]) <= web3.utils.toBN(web3.utils.toWei('112.6', 'ether')), "Reward too big on account 16" + ": " + (await bananas.balanceOf(accounts[16])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[17]) >= web3.utils.toBN(web3.utils.toWei('12.5', 'ether')), "Reward too small on account 17" + ": " + (await bananas.balanceOf(accounts[17])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[17]) <= web3.utils.toBN(web3.utils.toWei('12.6', 'ether')), "Reward too big on account 17" + ": " + (await bananas.balanceOf(accounts[17])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[18]) >= web3.utils.toBN(web3.utils.toWei('12.5', 'ether')), "Reward too small on account 18" + ": " + (await bananas.balanceOf(accounts[18])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[18]) <= web3.utils.toBN(web3.utils.toWei('12.6', 'ether')), "Reward too big on account 18" + ": " + (await bananas.balanceOf(accounts[18])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[19]) >= web3.utils.toBN(web3.utils.toWei('62.5', 'ether')), "Reward too small on account 19" + ": " + (await bananas.balanceOf(accounts[19])).toString(10)); // refactor
+    assert(await bananas.balanceOf(accounts[19]) <= web3.utils.toBN(web3.utils.toWei('62.6', 'ether')), "Reward too big on account 19" + ": " + (await bananas.balanceOf(accounts[19])).toString(10)); // refactor
+
+    console.log("Verify that the kong returned to the original owner")
+    assert.equal(await kongz.ownerOf(1001), accounts[2])
+
+    console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d", 
+                kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
+                kongWithdrawalSummary['receipt']['cumulativeGasUsed'] )
   });
 
 });
