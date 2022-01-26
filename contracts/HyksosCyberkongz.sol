@@ -19,14 +19,14 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     IKongz kongz;
     IERC20 bananas;
 
-    struct Kong {
+    struct DepositedNft {
         uint256 timeDeposited;
         address owner;
         Deposit[] shareholders;
     }
 
     mapping(address => uint256) bananaBalance;
-    mapping(uint256 => Kong) depositedKongs;
+    mapping(uint256 => DepositedNft) depositedKongs;
     mapping(address => bool) isAutoCompoundOff; // interpret 0 as ON, to use default values more efficiently. Use normal mapping true=ON everywhere outside this map.
     uint256 totalBananasBalance;
 
@@ -53,7 +53,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         bananaBalance[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalBananasBalance += _amount;
-        setAutoCompoundStrategy(_isAutoCompoundOn);
+        _setAutoCompoundStrategy(_isAutoCompoundOn);
         emit Erc20Deposit(msg.sender, _amount);
     }
 
@@ -87,7 +87,11 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         delete depositedKongs[_id];
     }
 
-    function setAutoCompoundStrategy(bool _isAutoCompoundOn) public {
+    function setAutoCompoundStrategy(bool _isAutoCompoundOn) external override {
+        _setAutoCompoundStrategy(_isAutoCompoundOn);
+    }
+
+    function _setAutoCompoundStrategy(bool _isAutoCompoundOn) internal {
         if (isAutoCompoundOff[msg.sender] == _isAutoCompoundOn) {
             isAutoCompoundOff[msg.sender] = !_isAutoCompoundOn;
         }
@@ -194,11 +198,11 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         return totalBananasBalance;
     }
 
-    function depositedKong(uint256 _id) external view returns(Kong memory) {
+    function depositedNft(uint256 _id) external view returns(DepositedNft memory) {
         return depositedKongs[_id];
     }
 
-    function autoCompound(address _addr) external view returns(bool) {
+    function autoCompoundStrategy(address _addr) external view override returns(bool) {
         return !isAutoCompoundOff[_addr];
     }
 
