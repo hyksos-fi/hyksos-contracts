@@ -16,14 +16,14 @@ web3.extend({
   }]
 });
 
-const REVERT = "Returned error: VM Exception while processing transaction: revert";
-const assertRevert = async promise => {
+const EXCEPTION = "Returned error: VM Exception while processing transaction:";
+const assertException = async promise => {
   try {
     await promise
     throw null;
   } catch (error) {
     assert(error, "Expected an error but did not get one");
-    assert(error.message.startsWith(REVERT), "Expected VM revert error, but got: " + error.message)
+    assert(error.message.startsWith(EXCEPTION), "Expected VM revert error, but got: " + error.message)
   }
 }
 
@@ -50,7 +50,7 @@ contract("HyksosCyberkongz test", async accounts => {
     const hyksos = await Hyksos.deployed();
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('1000', 'ether'));
     await bananas.approve(hyksos.address, web3.utils.toWei('500', 'ether'), {from: accounts[1]})
-    await assertRevert(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]}))
+    await assertException(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]}))
     await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), false, { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
@@ -69,7 +69,7 @@ contract("HyksosCyberkongz test", async accounts => {
     assert.equal(await kongz.ownerOf(1001), accounts[2])
     
     console.log("verify that deposit is not possible with empty deposit queue")
-    await assertRevert(hyksos.depositNft(1001, {from: accounts[2], gas: 1e6}))
+    await assertException(hyksos.depositNft(1001, {from: accounts[2], gas: 1e6}))
     
 
     console.log("deposit 1000 bananas into the hyksos from account 2 and verify amount")
@@ -89,7 +89,7 @@ contract("HyksosCyberkongz test", async accounts => {
     
     console.log("verify that it's impossible to withdraw a kong before the due date")
     web3.evm.increaseTime(5 * 86400);
-    await assertRevert(hyksos.withdrawNft(1001, {from: accounts[2], gas: 1e6}))
+    await assertException(hyksos.withdrawNft(1001, {from: accounts[2], gas: 1e6}))
     
     console.log("withdraw a kong after the due date")
     web3.evm.increaseTime(5 * 86400 + 1);
@@ -129,7 +129,7 @@ contract("HyksosCyberkongz test", async accounts => {
     }
     console.log("13th deposit shouldn't be possible, (40 bananas left in the hyksos)")
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('40', 'ether'));
-    await assertRevert(hyksos.depositNft(1001, {from: accounts[2], gas: 1e6}))
+    await assertException(hyksos.depositNft(1001, {from: accounts[2], gas: 1e6}))
 
     console.log("share account 1 funds across multiple accounts to build a bigger deposit queue. Deposit the funds into the hyksos")
     for (let i = 3; i < 20; i++) {
@@ -261,7 +261,7 @@ contract("HyksosCyberkongz test", async accounts => {
       await hyksos.withdrawNft(1001, {from: accounts[2], gas: 1e6});
     }
     console.log("4th deposit should fail.")
-    await assertRevert(hyksos.depositNft(1001, {from: accounts[2], gas: 1e6}));
+    await assertException(hyksos.depositNft(1001, {from: accounts[2], gas: 1e6}));
 
 
     assert((await hyksos.erc20Balance(accounts[1])).lte(web3.utils.toBN(web3.utils.toWei('1.0', 'ether'))), "Balance too big: " + (await hyksos.erc20Balance(accounts[1])).toString(10));

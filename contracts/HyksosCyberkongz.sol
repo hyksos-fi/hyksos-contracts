@@ -27,7 +27,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
 
     mapping(address => uint256) bananaBalance;
     mapping(uint256 => DepositedNft) depositedKongs;
-    mapping(address => bool) isAutoCompoundOff; // interpret 0 as ON, to use default values more efficiently. Use normal mapping true=ON everywhere outside this map.
+    mapping(address => bool) isAutoCompoundOff; // interpret 0 as ON, to use default values more efficiently. Use normal mapping true=>ON everywhere outside this map.
     uint256 totalBananasBalance;
 
     uint256 constant DEPOSIT_LENGTH_DAYS = 10; // TBD
@@ -45,35 +45,29 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     }
 
     function depositErc20(uint256 _amount, bool _isAutoCompoundOn) external override {
-        require(_amount > 0, "Amount must be positive.");
-        require(bananas.balanceOf(msg.sender) >= _amount, "Not enough bananas to deposit.");
-        uint256 allowance = bananas.allowance(msg.sender, address(this));
-        require(allowance >= _amount, "Not enough allowance");
-        bananas.transferFrom(msg.sender, address(this), _amount);
         bananaBalance[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalBananasBalance += _amount;
         _setAutoCompoundStrategy(_isAutoCompoundOn);
+        bananas.transferFrom(msg.sender, address(this), _amount);
         emit Erc20Deposit(msg.sender, _amount);
     }
 
     function withdrawErc20(uint256 _amount) external override {
         require(bananaBalance[msg.sender] > 0, "No bananas to withdraw.");
         require(_amount <= bananaBalance[msg.sender], "Withdrawal amount too big.");
-        bananas.transfer(msg.sender, _amount);
         totalBananasBalance -= _amount;
-        bananaBalance[msg.sender] = 0;
+        bananaBalance[msg.sender] -= amount;
+        bananas.transfer(msg.sender, _amount);
         emit Erc20Withdrawal(msg.sender, _amount);
     }
 
     function depositNft(uint256 _id) external override {
-        require(kongz.ownerOf(_id) == msg.sender, "Not the Kong owner.");
-        require(kongz.getApproved(_id) == address(this));
-        kongz.transferFrom(msg.sender, address(this), _id);
-        bananas.transfer(msg.sender, LOAN_AMOUNT);
         depositedKongs[_id].timeDeposited = block.timestamp;
         depositedKongs[_id].owner = msg.sender;
         selectShareholders(_id);
+        kongz.transferFrom(msg.sender, address(this), _id);
+        bananas.transfer(msg.sender, LOAN_AMOUNT);
         emit NftDeposit(msg.sender, _id);
     }
 
