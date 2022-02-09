@@ -57,7 +57,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         require(bananaBalance[msg.sender] > 0, "No bananas to withdraw.");
         require(_amount <= bananaBalance[msg.sender], "Withdrawal amount too big.");
         totalBananasBalance -= _amount;
-        bananaBalance[msg.sender] -= amount;
+        bananaBalance[msg.sender] -= _amount;
         bananas.transfer(msg.sender, _amount);
         emit Erc20Withdrawal(msg.sender, _amount);
     }
