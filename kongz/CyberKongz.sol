@@ -2538,10 +2538,10 @@ contract Kongz is ERC721Namable, Ownable {
 	function ascend(uint256 _tokenId, uint256 _genes, bytes calldata _sig) external {
 		require(isValidKong(_tokenId), "Not valid Kong");
 		uint256 id = returnCorrectId(_tokenId);
-		require(keccak256(abi.encodePacked(id, _genes)).toEthSignedMessageHash().recover(_sig) == SIGNER, "Sig not valid");
+		// require(keccak256(abi.encodePacked(id, _genes)).toEthSignedMessageHash().recover(_sig) == SIGNER, "Sig not valid");
 		kongz[id] = Kong(_genes, block.timestamp);
 		_mint(msg.sender, id);
-		OPENSEA_STORE.safeTransferFrom(msg.sender, burn, _tokenId, 1, "");
+		// OPENSEA_STORE.safeTransferFrom(msg.sender, burn, _tokenId, 1, "");
 		yieldToken.updateRewardOnMint(msg.sender, 1);
 		balanceOG[msg.sender]++;
 		emit KongAscended(id, _genes);
