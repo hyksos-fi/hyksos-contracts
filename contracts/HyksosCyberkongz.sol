@@ -28,12 +28,11 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     mapping(address => bool) isAutoCompoundOff; // interpret 0 as ON, to use default values more efficiently. Use normal mapping true=>ON everywhere outside this map.
     uint256 totalBananasBalance;
 
-    uint256 constant DEPOSIT_LENGTH_DAYS = 10; // TBD
-    uint256 constant DEPOSIT_LENGTH_SECONDS = DEPOSIT_LENGTH_DAYS * 86400;
+    uint256 constant DEPOSIT_LENGTH_SECONDS = 1 minutes;
     uint256 constant BASE_RATE = 10 ether;
     uint256 constant MIN_DEPOSIT = 1 * BASE_RATE; // TBD
     uint256 constant ROI_PCTG = 80; // TBD
-    uint256 constant KONG_WORK_VALUE = BASE_RATE * DEPOSIT_LENGTH_DAYS;
+    uint256 constant KONG_WORK_VALUE = BASE_RATE * DEPOSIT_LENGTH_SECONDS / 86400;
     uint256 constant LOAN_AMOUNT = KONG_WORK_VALUE * ROI_PCTG / 100;
 
 
