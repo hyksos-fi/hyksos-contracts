@@ -1,5 +1,5 @@
 const Kongz = artifacts.require("Kongz");
-const Bananas = artifacts.require("YieldToken");
+const Bananas = artifacts.require("contracts/kongz/YieldToken.sol:YieldToken");
 const Hyksos = artifacts.require("HyksosCyberkongz");
 
 
@@ -16,7 +16,7 @@ web3.extend({
   }]
 });
 
-const EXCEPTION = "Returned error: VM Exception while processing transaction:";
+const EXCEPTION = "VM Exception while processing transaction:";
 const assertException = async promise => {
   try {
     await promise
@@ -28,11 +28,25 @@ const assertException = async promise => {
 }
 
 
-contract("HyksosCyberkongz test", async accounts => {
+contract("HyksosCyberkongz test", async () => {
+  let kongz, bananas, hyksos, accounts;
+  
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    kongz = await Kongz.new("kongz", "KGZ", ["Eren", "Dziku", "Gurisza"], [0, 1, 2], {from: accounts[0]});
+    Kongz.setAsDeployed(kongz);
+    bananas = await Bananas.new(kongz.address, {from: accounts[0]});
+    Bananas.setAsDeployed(bananas);
+    hyksos = await Hyksos.new(bananas.address, kongz.address, {from: accounts[0]});
+    Hyksos.setAsDeployed(hyksos);
+  
+    await kongz.setYieldToken(bananas.address, {from: accounts[0]});
+    
+    console.log("Kongz: %s \nBananas: %s \nHyksos: %s \n", kongz.address, bananas.address, hyksos.address);
+  });
+
   it("Sanity", async () => {
-    const kongz = await Kongz.deployed();
-    const bananas = await Bananas.deployed();
-    const hyksos = await Hyksos.deployed();
+
     assert.equal(await kongz.ownerOf(1001), accounts[0])
     await kongz.transferFrom(accounts[0], accounts[1], 1001, {from: accounts[0], gas: 1000000})
     assert.equal(await kongz.ownerOf(1001), accounts[1])
@@ -43,51 +57,40 @@ contract("HyksosCyberkongz test", async accounts => {
     const claimable = await bananas.getTotalClaimable(accounts[1]);
     assert.equal(claimable.toString(10), web3.utils.toWei('2300', 'ether'), "Incorrect claimable amount"); // 2 * 100 * 10 (generated) + 300 (initial issuance)
     await kongz.getReward({from: accounts[1], gas: 1e6});
-    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('2300', 'ether'));
-
+    assert((await bananas.balanceOf(accounts[1])).gte(claimable));
 
   });
 
   it("Deposit and withdraw bananas from Hyksos", async () => {
-    const kongz = await Kongz.deployed();
-    const bananas = await Bananas.deployed();
-    const hyksos = await Hyksos.deployed();
-    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('2300', 'ether'));
+    const initialBalance = await bananas.balanceOf(accounts[1]);
     await bananas.approve(hyksos.address, web3.utils.toWei('500', 'ether'), {from: accounts[1]})
     await assertException(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]}))
     await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), false, { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
-    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('1800', 'ether'));
+    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), initialBalance.sub(web3.utils.toBN(web3.utils.toWei('500', 'ether'))).toString(10));
     await hyksos.withdrawErc20(await hyksos.erc20Balance(accounts[1]), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), "0");
-    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('2300', 'ether'));
-
-
+    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), initialBalance.toString(10));
   });
 
   it("Simple Kong deposit", async () => {
-    const kongz = await Kongz.deployed();
-    const bananas = await Bananas.deployed();
-    const hyksos = await Hyksos.deployed();
-    
+
     console.log("transfer Kong to account 2, to avoid confusion")
     await kongz.transferFrom(accounts[1], accounts[2], 0, {from: accounts[1], gas: 1e6})
     assert.equal(await kongz.ownerOf(0), accounts[2])
     
     console.log("verify that deposit is not possible with empty deposit queue")
-    const kongApprovalSummary = await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+    const kongApprovalSummary = await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
     await assertException(hyksos.depositNft(0, {from: accounts[2], gas: 1e6}))
     
     console.log("deposit 1000 bananas into Hyksos from account 2 and verify amount")
-    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('2300', 'ether'));
     assert.equal((await bananas.balanceOf(accounts[2])).toString(10), "0");
     const bananasApprovalSummary = await bananas.approve(hyksos.address, web3.utils.toWei('1000', 'ether'), {from: accounts[1]})
     const bananasDepositSummary = await hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('1000', 'ether'));
-    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), web3.utils.toWei('1300', 'ether'));
 
     console.log("verify that a Kong with invalid ID won't be accepted.")
-    await kongz.approve(Hyksos.address, 1001,  {from: accounts[1]});
+    await kongz.approve(hyksos.address, 1001,  {from: accounts[1]});
     await assertException(hyksos.depositNft(1001, {from: accounts[1], gas: 1e6}))
     
     console.log("deposit a kong into Hyksos from account 2")
@@ -122,16 +125,12 @@ contract("HyksosCyberkongz test", async accounts => {
   });
 
   it("Complex Kong deposits", async () => {
-    const kongz = await Kongz.deployed();
-    const bananas = await Bananas.deployed();
-    const hyksos = await Hyksos.deployed();
-
 
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('920', 'ether'));
     console.log("920 / 80 = 11 more Kong deposits should be possible")
 
     for (let i = 0; i < 11; i++) {
-      await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+      await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
       await hyksos.depositNft(0, {from: accounts[2], gas: 1e6})
       web3.evm.increaseTime(10 * 86400 + 1);
       await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
@@ -150,7 +149,7 @@ contract("HyksosCyberkongz test", async accounts => {
     }
     
     console.log("Kong deposit should now be possible")
-    await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+    await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
     await hyksos.depositNft(0, {from: accounts[2], gas: 1e6})
     
     console.log("withdraw Kong and verify that only accounts 3, 4, 5, 6 have received at least 12.5 bananas in rewards")
@@ -169,7 +168,7 @@ contract("HyksosCyberkongz test", async accounts => {
     assert.equal((await bananas.balanceOf(accounts[9])).toString(10), "0");
     
     console.log("Deposit Kong once again and verify that addresses 7, 8, 10, 11, 12, 13, 14, 15 received rewards (14th deposit)")
-    const kongApprovalSummary = await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+    const kongApprovalSummary = await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
     const kongLendSummary = await hyksos.depositNft(0, {from: accounts[2], gas: 1e6})
     web3.evm.increaseTime(10 * 86400 + 1);
     const kongWithdrawalSummary = await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
@@ -203,9 +202,6 @@ contract("HyksosCyberkongz test", async accounts => {
     */
 
   it("Late Kong withdrawal", async () => {
-    const kongz = await Kongz.deployed();
-    const bananas = await Bananas.deployed();
-    const hyksos = await Hyksos.deployed();
 
     console.log("Transfer 40 more bananas from account 1 to 19, then deposit them into the pool.")
     await bananas.transfer(accounts[19], web3.utils.toWei('40', 'ether'), {from: accounts[1], gas: 1e6})
@@ -215,7 +211,7 @@ contract("HyksosCyberkongz test", async accounts => {
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('80', 'ether'));
     
     console.log("Deposit Kong")
-    const kongApprovalSummary = await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+    const kongApprovalSummary = await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
     const kongLendSummary = await hyksos.depositNft(0, {from: accounts[2], gas: 1e6})
 
     console.log("Increase time by twice the deposit length.")
@@ -241,9 +237,6 @@ contract("HyksosCyberkongz test", async accounts => {
   });
 
   it("Auto compounding", async () => {
-    const kongz = await Kongz.deployed();
-    const bananas = await Bananas.deployed();
-    const hyksos = await Hyksos.deployed();
 
     console.log("Deposit 80 bananas from account 1 to pool.")
     await bananas.approve(hyksos.address, web3.utils.toWei('80', 'ether'), {from: accounts[1]})
@@ -253,7 +246,7 @@ contract("HyksosCyberkongz test", async accounts => {
 
     console.log("Deposit and withdraw Kong 8 times in a row.")
     for (let i = 1; i <= 8; i++) {
-      await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+      await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
       await hyksos.depositNft(0, {from: accounts[2], gas: 1e6});
       web3.evm.increaseTime(10 * 86400 + 1);
       await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
@@ -264,7 +257,7 @@ contract("HyksosCyberkongz test", async accounts => {
     await hyksos.setAutoCompoundStrategy(false, {from: accounts[1], gas: 1e6});
     console.log("The remaining amount should be enough for 3 more deposits.")
     for (let i = 1; i <= 3; i++) {
-      await kongz.approve(Hyksos.address, 0,  {from: accounts[2]});
+      await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
       await hyksos.depositNft(0, {from: accounts[2], gas: 1e6});
       web3.evm.increaseTime(10 * 86400 + 1);
       await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6});
