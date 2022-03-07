@@ -379,7 +379,6 @@
     "varint": "^5.0.2",
     "vary": "^1.1.2",
     "verror": "^1.10.0",
-    "web3": "^1.6.1",
     "web3-bzz": "^1.6.1",
     "web3-core": "^1.6.1",
     "web3-core-helpers": "^1.6.1",
@@ -417,11 +416,14 @@
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
+    "@nomiclabs/hardhat-truffle5": "^2.0.5",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
     "chai": "^4.3.6",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.4",
-    "hardhat": "^2.9.0"
+    "hardhat": "^2.9.0",
+    "web3": "^1.7.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
