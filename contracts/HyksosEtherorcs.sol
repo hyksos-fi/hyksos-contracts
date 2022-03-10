@@ -68,21 +68,17 @@ contract HyksosEtherorcs is IHyksos, DepositQueue {
         depositedNfts[_id].rateModifier = nft.orcs(_id).zugModifier;
         uint256 loanAmount = calcReward(DEPOSIT_LENGTH, depositedNfts[_id].rateModifier) * ROI_PCTG / 100;
         selectShareholders(_id, loanAmount);
-        uint256[] memory idList = new uint256[](1);
-        idList[0] = _id;
-        nft.claim(idList);
         nft.transferFrom(msg.sender, address(this), _id);
-        if (nft.activities(_id).action != IOrcs.Actions.FARMING) {
-            nft.doAction(_id, IOrcs.Actions.FARMING);
-        }
+        nft.doAction(_id, IOrcs.Actions.FARMING);
         erc20.transfer(msg.sender, loanAmount);
         emit NftDeposit(msg.sender, _id);
     }
 
     function withdrawNft(uint256 _id) external override {
         require(depositedNfts[_id].timeDeposited + DEPOSIT_LENGTH < block.timestamp, "Too early to withdraw.");
-        uint256 reward = calcReward(block.timestamp - depositedNfts[_id].timeDeposited, depositedNfts[_id].rateModifier);
-        distributeRewards(reward, _id);
+        uint256 reward = nft.claimable(_id);
+        nft.doAction(_id, IOrcs.Actions.UNSTAKED);
+        distributeRewards(_id, reward);
         nft.transferFrom(address(this), depositedNfts[_id].owner, _id);
         emit NftWithdrawal(depositedNfts[_id].owner, _id);
         delete depositedNfts[_id];
@@ -125,12 +121,12 @@ contract HyksosEtherorcs is IHyksos, DepositQueue {
     }
 
     function withdrawNftAndRewardClaimant(uint256 _id, uint256 _reward, uint256 _claimantId) internal {
-        uint256 kongWorkValue = calcReward(DEPOSIT_LENGTH, depositedNfts[_id].rateModifier);
+        uint256 nftWorkValue = calcReward(DEPOSIT_LENGTH, depositedNfts[_id].rateModifier);
         for (uint i = 0; i < depositedNfts[_id].shareholders.length; i++) {
             Deposit memory d = depositedNfts[_id].shareholders[i];
             uint256 payback = d.amount * 100 / ROI_PCTG;
             if (i == _claimantId) {
-                payback += _reward - kongWorkValue;
+                payback += _reward - nftWorkValue;
             }
             payRewardAccordingToStrategy(d.sender, payback);
         }
