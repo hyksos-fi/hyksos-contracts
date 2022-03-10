@@ -1,3 +1,5 @@
+const { web3 } = require("hardhat");
+
 const Kongz = artifacts.require("Kongz");
 const Bananas = artifacts.require("contracts/kongz/YieldToken.sol:YieldToken");
 const Hyksos = artifacts.require("HyksosCyberkongz");
@@ -186,7 +188,7 @@ contract("HyksosCyberkongz test", async () => {
     }
 
     console.log("verify that account 2 has received 80 * 14 bananas in total")
-    assert((await bananas.balanceOf(accounts[2])).lte(web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether'))), "Wrong reward");
+    assert((await bananas.balanceOf(accounts[2])).gte(web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether'))), "Wrong reward: " + (await bananas.balanceOf(accounts[2])).toString(10));
 
     console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d\nBananas withdrawal: %d", 
                 kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
