@@ -15,3 +15,7 @@ interface IHyksos {
     event NftDeposit(address indexed addr, uint256 id);
     event NftWithdrawal(address indexed addr, uint256 id);
 }
+
+interface IAutoCompound {
+    function getStrategy(address _user) external view returns(bool);
+}

@@ -40,7 +40,7 @@ contract("HyksosCyberkongz test", async () => {
     Bananas.setAsDeployed(bananas);
     autoCompound = await AutoCompound.new({from: accounts[0]});
     AutoCompound.setAsDeployed(autoCompound);
-    hyksos = await Hyksos.new(bananas.address, kongz.address, autoCompound.address, {from: accounts[0]});
+    hyksos = await Hyksos.new(bananas.address, kongz.address, autoCompound.address, 10 * 86400, 80, {from: accounts[0]});
     Hyksos.setAsDeployed(hyksos);
   
     await kongz.setYieldToken(bananas.address, {from: accounts[0]});
@@ -193,7 +193,7 @@ contract("HyksosCyberkongz test", async () => {
     }
 
     console.log("verify that account 2 has received 80 * 14 bananas in total")
-    assert((await bananas.balanceOf(accounts[2])).gte(web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether'))), "Wrong reward");
+    assert((await bananas.balanceOf(accounts[2])).gte(web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether'))), "Wrong reward: " + (await bananas.balanceOf(accounts[2])).toString(10));
 
     console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d\nBananas withdrawal: %d", 
                 kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],

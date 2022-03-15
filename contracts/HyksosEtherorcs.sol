@@ -6,31 +6,32 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import './HyksosBase.sol';
 
-interface IKongz is IERC721 {
-    function balanceOG(address _user) external view returns(uint256);
-    function getReward() external;
+interface IOrcs is IERC721 {
+    struct Orc { uint8 body; uint8 helm; uint8 mainhand; uint8 offhand; uint16 level; uint16 zugModifier; uint32 lvlProgress; }
+    enum   Actions { UNSTAKED, FARMING, TRAINING }
+    struct Action  { address owner; uint88 timestamp; Actions action; }
+    function orcs(uint256 _id) external returns(Orc memory);
+    function activities(uint256 _id) external returns(Action memory);
+    function claimable(uint256 id) external view returns (uint256);
+    function claim(uint256[] calldata ids) external;
+    function doAction(uint256 id, Actions action_) external;
 }
 
-contract HyksosCyberkongz is HyksosBase {
+contract HyksosEtherorcs is HyksosBase {
     
-    IKongz immutable nft;
+    IOrcs immutable nft;
     IERC20 immutable erc20;
-    uint256 immutable kongWorkValue;
-    uint256 immutable loanAmount;
 
-    uint256 constant BASE_RATE = 10 ether;
     uint256 constant MIN_DEPOSIT = 10 ether; // TBD
 
 
-    constructor(address _bananas, address _kongz, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {
-        nft = IKongz(_kongz);
-        erc20 = IERC20(_bananas);
-        kongWorkValue = BASE_RATE * depositLength / 1 days;
-        loanAmount = kongWorkValue * roiPctg / 100;
+    constructor(address _zug, address _orcs, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {
+        nft = IOrcs(_orcs);
+        erc20 = IERC20(_zug);
     }
 
     function payErc20(address _receiver, uint256 _amount) internal override {
-        erc20.transfer(_receiver, _amount);
+        require(erc20.transfer(_receiver, _amount));
     }
 
     function depositErc20(uint256 _amount) external override {
@@ -50,30 +51,29 @@ contract HyksosCyberkongz is HyksosBase {
     }
 
     function depositNft(uint256 _id) external override {
-        require(isValidKong(_id), "Can't deposit this Kong.");
-        depositedNfts[_id].timeDeposited = block.timestamp;
+        depositedNfts[_id].timeDeposited = uint88(block.timestamp);
         depositedNfts[_id].owner = msg.sender;
+        depositedNfts[_id].rateModifier = nft.orcs(_id).zugModifier;
+        uint256 loanAmount = calcReward(depositLength, depositedNfts[_id].rateModifier) * roiPctg / 100;
         selectShareholders(_id, loanAmount);
         nft.transferFrom(msg.sender, address(this), _id);
+        nft.doAction(_id, IOrcs.Actions.FARMING);
         erc20.transfer(msg.sender, loanAmount);
         emit NftDeposit(msg.sender, _id);
     }
 
     function withdrawNft(uint256 _id) external override {
         require(depositedNfts[_id].timeDeposited + depositLength < block.timestamp, "Too early to withdraw.");
-        uint256 reward = calcReward(block.timestamp - depositedNfts[_id].timeDeposited);
-        nft.getReward();
-        distributeRewards(_id, reward, kongWorkValue);
+        uint256 reward = nft.claimable(_id);
+        nft.doAction(_id, IOrcs.Actions.UNSTAKED);
+        uint256 nftWorkValue = calcReward(depositLength, depositedNfts[_id].rateModifier);
+        distributeRewards(_id, reward, nftWorkValue);
         nft.transferFrom(address(this), depositedNfts[_id].owner, _id);
         emit NftWithdrawal(depositedNfts[_id].owner, _id);
         delete depositedNfts[_id];
     }
 
-    function isValidKong(uint256 _id) internal pure returns(bool) {
-        return _id < 1001;
-    }
-
-    function calcReward(uint256 _time) internal pure returns(uint256) {
-        return BASE_RATE * _time / 86400;
+    function calcReward(uint256 timeDiff, uint16 zugModifier) internal pure returns (uint256) {
+        return timeDiff * (4 + zugModifier) * 1 ether / 1 days;
     }
 }
