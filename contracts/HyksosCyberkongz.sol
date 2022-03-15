@@ -12,10 +12,15 @@ interface IKongz is IERC721 {
     function getReward() external;
 }
 
+interface IAutoCompound {
+    function getStrategy(address _user) external view returns(bool);
+}
+
 contract HyksosCyberkongz is IHyksos, DepositQueue {
     
     IKongz kongz;
     IERC20 bananas;
+    IAutoCompound autoCompound;
 
     struct DepositedNft {
         uint256 timeDeposited;
@@ -25,7 +30,6 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
 
     mapping(address => uint256) bananaBalance;
     mapping(uint256 => DepositedNft) depositedKongs;
-    mapping(address => bool) isAutoCompoundOff; // interpret 0 as ON, to use default values more efficiently. Use normal mapping true=>ON everywhere outside this map.
     uint256 totalBananasBalance;
 
     uint256 constant DEPOSIT_LENGTH_DAYS = 10; // TBD
@@ -37,16 +41,16 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     uint256 constant LOAN_AMOUNT = KONG_WORK_VALUE * ROI_PCTG / 100;
 
 
-    constructor(address _bananas, address _kongz) {
+    constructor(address _bananas, address _kongz, address _autoCompound) {
         kongz = IKongz(_kongz);
         bananas = IERC20(_bananas);
+        autoCompound = IAutoCompound(_autoCompound);
     }
 
-    function depositErc20(uint256 _amount, bool _isAutoCompoundOn) external override {
+    function depositErc20(uint256 _amount) external override {
         bananaBalance[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalBananasBalance += _amount;
-        _setAutoCompoundStrategy(_isAutoCompoundOn);
         bananas.transferFrom(msg.sender, address(this), _amount);
         emit Erc20Deposit(msg.sender, _amount);
     }
@@ -79,20 +83,12 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
         delete depositedKongs[_id];
     }
 
-    function setAutoCompoundStrategy(bool _isAutoCompoundOn) external override {
-        _setAutoCompoundStrategy(_isAutoCompoundOn);
-    }
 
-    function _setAutoCompoundStrategy(bool _isAutoCompoundOn) internal {
-        if (isAutoCompoundOff[msg.sender] == _isAutoCompoundOn) {
-            isAutoCompoundOff[msg.sender] = !_isAutoCompoundOn;
-        }
-    }
 
     function distributeRewards(uint256 _reward, uint256 _id) internal {
         // Most probable scenario, so we check it first
         if (msg.sender == depositedKongs[_id].owner) {
-            withdrawNftAndShareRewardEqually(_id, _reward);
+            withdrawNftAndRewardOwner(_id, _reward);
         } else {
             // Check if the caller is one of the shareholders
             for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
@@ -123,6 +119,15 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
             }
             payRewardAccordingToStrategy(d.sender, payback);
         }
+    }
+
+    function withdrawNftAndRewardOwner(uint256 _id, uint256 _reward) internal {
+        for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
+            Deposit memory d = depositedKongs[_id].shareholders[i];
+            uint256 payback = d.amount * 100 / ROI_PCTG;
+            payRewardAccordingToStrategy(d.sender, payback);
+        }
+        bananas.transfer(depositedKongs[_id].owner, _reward - KONG_WORK_VALUE);
     }
 
     function selectShareholders(uint256 _id) internal {
@@ -165,12 +170,12 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     }
 
     function payRewardAccordingToStrategy(address _receiver, uint256 _amount) internal {
-        if (isAutoCompoundOff[_receiver]) {
-            bananas.transfer(_receiver, _amount);
-        } else {
+        if (autoCompound.getStrategy(_receiver)) {
             bananaBalance[_receiver] += _amount;
             pushDeposit(_amount, _receiver);
             totalBananasBalance += _amount;
+        } else {
+            bananas.transfer(_receiver, _amount);
         }
     }
 
@@ -193,9 +198,4 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     function depositedNft(uint256 _id) external view returns(DepositedNft memory) {
         return depositedKongs[_id];
     }
-
-    function autoCompoundStrategy(address _addr) external view override returns(bool) {
-        return !isAutoCompoundOff[_addr];
-    }
-
 }
