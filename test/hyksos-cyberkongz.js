@@ -1,3 +1,4 @@
+const AutoCompound = artifacts.require("AutoCompound");
 const Kongz = artifacts.require("Kongz");
 const Bananas = artifacts.require("contracts/kongz/YieldToken.sol:YieldToken");
 const Hyksos = artifacts.require("HyksosCyberkongz");
@@ -37,7 +38,9 @@ contract("HyksosCyberkongz test", async () => {
     Kongz.setAsDeployed(kongz);
     bananas = await Bananas.new(kongz.address, {from: accounts[0]});
     Bananas.setAsDeployed(bananas);
-    hyksos = await Hyksos.new(bananas.address, kongz.address, {from: accounts[0]});
+    autoCompound = await AutoCompound.new({from: accounts[0]});
+    AutoCompound.setAsDeployed(autoCompound);
+    hyksos = await Hyksos.new(bananas.address, kongz.address, autoCompound.address, {from: accounts[0]});
     Hyksos.setAsDeployed(hyksos);
   
     await kongz.setYieldToken(bananas.address, {from: accounts[0]});
@@ -61,11 +64,20 @@ contract("HyksosCyberkongz test", async () => {
 
   });
 
+  it("Disable autocompounding", async () => {
+    for (let i = 0; i < 20; i++) {
+      assert(await autoCompound.getStrategy(accounts[i]));
+      await autoCompound.setStrategy(false, {from: accounts[i]})
+      assert(!(await autoCompound.getStrategy(accounts[i])));
+    }
+
+  });
+
   it("Deposit and withdraw bananas from Hyksos", async () => {
     const initialBalance = await bananas.balanceOf(accounts[1]);
     await bananas.approve(hyksos.address, web3.utils.toWei('500', 'ether'), {from: accounts[1]})
-    await assertException(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]}))
-    await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), false, { from: accounts[1]});
+    await assertException(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), { from: accounts[1]}))
+    await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
     assert.equal((await bananas.balanceOf(accounts[1])).toString(10), initialBalance.sub(web3.utils.toBN(web3.utils.toWei('500', 'ether'))).toString(10));
     await hyksos.withdrawErc20(await hyksos.erc20Balance(accounts[1]), { from: accounts[1]});
@@ -86,7 +98,7 @@ contract("HyksosCyberkongz test", async () => {
     console.log("deposit 1000 bananas into Hyksos from account 2 and verify amount")
     assert.equal((await bananas.balanceOf(accounts[2])).toString(10), "0");
     const bananasApprovalSummary = await bananas.approve(hyksos.address, web3.utils.toWei('1000', 'ether'), {from: accounts[1]})
-    const bananasDepositSummary = await hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]});
+    const bananasDepositSummary = await hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('1000', 'ether'));
 
     console.log("verify that a Kong with invalid ID won't be accepted.")
@@ -143,7 +155,7 @@ contract("HyksosCyberkongz test", async () => {
     for (let i = 3; i < 20; i++) {
       await bananas.transfer(accounts[i], web3.utils.toWei('10', 'ether'), {from: accounts[1], gas: 1e6})
       await bananas.approve(hyksos.address, web3.utils.toWei('10', 'ether'), {from: accounts[i]})
-      await hyksos.depositErc20(web3.utils.toWei('10', 'ether'), false, { from: accounts[i]});
+      await hyksos.depositErc20(web3.utils.toWei('10', 'ether'), { from: accounts[i]});
       assert.equal((await hyksos.erc20Balance(accounts[i])).toString(10), web3.utils.toWei('10', 'ether'));
       assert.equal((await bananas.balanceOf(accounts[i])).toString(10), "0");
     }
@@ -201,7 +213,7 @@ contract("HyksosCyberkongz test", async () => {
     console.log("Transfer 40 more bananas from account 1 to 19, then deposit them into the pool.")
     await bananas.transfer(accounts[19], web3.utils.toWei('40', 'ether'), {from: accounts[1], gas: 1e6})
     await bananas.approve(hyksos.address, web3.utils.toWei('40', 'ether'), {from: accounts[19]})
-    await hyksos.depositErc20(web3.utils.toWei('40', 'ether'), false, { from: accounts[19]});
+    await hyksos.depositErc20(web3.utils.toWei('40', 'ether'), { from: accounts[19]});
     assert.equal((await hyksos.erc20Balance(accounts[19])).toString(10), web3.utils.toWei('50', 'ether'));
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('80', 'ether'));
     
@@ -229,7 +241,7 @@ contract("HyksosCyberkongz test", async () => {
 
     console.log("Deposit 80 bananas from account 1 into Hyksos")
     await bananas.approve(hyksos.address, web3.utils.toWei('80', 'ether'), {from: accounts[1]})
-    await hyksos.depositErc20(web3.utils.toWei('80', 'ether'), false, { from: accounts[1]});
+    await hyksos.depositErc20(web3.utils.toWei('80', 'ether'), { from: accounts[1]});
     const initAcc1Balance = await bananas.balanceOf(accounts[1]);
 
     console.log("Deposit Kong in Hyksos")
@@ -258,7 +270,9 @@ contract("HyksosCyberkongz test", async () => {
 
     console.log("Deposit 80 bananas from account 1 to pool.")
     await bananas.approve(hyksos.address, web3.utils.toWei('80', 'ether'), {from: accounts[1]})
-    await hyksos.depositErc20(web3.utils.toWei('80', 'ether'), true, { from: accounts[1]});
+    await hyksos.depositErc20(web3.utils.toWei('80', 'ether'), { from: accounts[1]});
+    await autoCompound.setStrategy(true, {from: accounts[1], gas: 1e6})
+    // assert(await autoCompound.getStrategy(accounts[1]))
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('80', 'ether'));
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('80', 'ether'));
 
@@ -271,7 +285,7 @@ contract("HyksosCyberkongz test", async () => {
       assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei((80 + 20 * i).toString(), 'ether'), "Wrong reward: " + i + ": " + (await hyksos.erc20Balance(accounts[1])).toString(10));
     }
     console.log("Disable autocompounding")
-    await hyksos.setAutoCompoundStrategy(false, {from: accounts[1], gas: 1e6});
+    await autoCompound.setStrategy(false, {from: accounts[1], gas: 1e6});
     console.log("The remaining amount should be enough for 3 more deposits.")
     for (let i = 1; i <= 3; i++) {
       await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
