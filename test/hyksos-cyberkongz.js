@@ -156,7 +156,7 @@ contract("HyksosCyberkongz test", async () => {
     web3.evm.increaseTime(10 * 86400 + 1);
     await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
     for (let i = 3; i < 7; i++) {
-      assert((await bananas.balanceOf(accounts[i])).gte(web3.utils.toBN(web3.utils.toWei('12.5', 'ether'))), "No reward on account " + i);
+      assert.equal((await bananas.balanceOf(accounts[i])).toString(10), web3.utils.toWei('12.5', 'ether'), "No reward on account " + i);
     }
     for (let i = 7; i < 20; i++) {
       assert((await bananas.balanceOf(accounts[i])).toString(10) == "0", "Unexpected reward on account " + i + ": " + (await bananas.balanceOf(accounts[i])).toString(10)); // refactor
@@ -173,20 +173,15 @@ contract("HyksosCyberkongz test", async () => {
     web3.evm.increaseTime(10 * 86400 + 1);
     const kongWithdrawalSummary = await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
     for (const i of [7, 8, 10, 11, 12, 13, 14, 15]) {
-      assert((await bananas.balanceOf(accounts[i])).gte(web3.utils.toBN(web3.utils.toWei('12.5', 'ether'))), "No reward on account " + i);
+      assert.equal((await bananas.balanceOf(accounts[i])).toString(10), web3.utils.toWei('12.5', 'ether'), "No reward on account " + i);
     }
     assert((await bananas.balanceOf(accounts[9])).toString(10) == "0", "Unexpected reward on account 9" + ": " + (await bananas.balanceOf(accounts[9])).toString(10)); // refactor
     for (let i = 16; i < 20; i++) {
       assert((await bananas.balanceOf(accounts[i])).toString(10) == "0", "Unexpected reward on account " + i + ": " + (await bananas.balanceOf(accounts[i])).toString(10)); // refactor);
     }
 
-    console.log("verify that no account has received a reward too big")
-    for (let i = 3; i < 20; i++) {
-      assert((await bananas.balanceOf(accounts[i])).lte(web3.utils.toBN(web3.utils.toWei('12.6', 'ether'))), "More than single reward on account " + i + ": " + (await bananas.balanceOf(accounts[i])).toString(10)); // refactor);
-    }
-
     console.log("verify that account 2 has received 80 * 14 bananas in total")
-    assert((await bananas.balanceOf(accounts[2])).lte(web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether'))), "Wrong reward");
+    assert((await bananas.balanceOf(accounts[2])).gte(web3.utils.toBN(web3.utils.toWei((80 * 14).toString(), 'ether'))), "Wrong reward");
 
     console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d\nBananas withdrawal: %d", 
                 kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
@@ -221,15 +216,38 @@ contract("HyksosCyberkongz test", async () => {
     const kongWithdrawalSummary = await hyksos.withdrawNft(0, {from: accounts[16], gas: 1e6})
     assert((await bananas.balanceOf(accounts[16])).gte(web3.utils.toBN(web3.utils.toWei('112.5', 'ether'))), "Reward too small on account 16: " + (await bananas.balanceOf(accounts[16])).toString(10)); // refactor
     assert((await bananas.balanceOf(accounts[16])).lte(web3.utils.toBN(web3.utils.toWei('112.6', 'ether'))), "Reward too big on account 16: " + (await bananas.balanceOf(accounts[16])).toString(10)); // refactor
-    assert((await bananas.balanceOf(accounts[17])).gte(web3.utils.toBN(web3.utils.toWei('12.5', 'ether'))), "Reward too small on account 17: " + (await bananas.balanceOf(accounts[17])).toString(10)); // refactor
-    assert((await bananas.balanceOf(accounts[17])).lte(web3.utils.toBN(web3.utils.toWei('12.6', 'ether'))), "Reward too big on account 17: " + (await bananas.balanceOf(accounts[17])).toString(10)); // refactor
-    assert((await bananas.balanceOf(accounts[18])).gte(web3.utils.toBN(web3.utils.toWei('12.5', 'ether'))), "Reward too small on account 18: " + (await bananas.balanceOf(accounts[18])).toString(10)); // refactor
-    assert((await bananas.balanceOf(accounts[18])).lte(web3.utils.toBN(web3.utils.toWei('12.6', 'ether'))), "Reward too big on account 18: " + (await bananas.balanceOf(accounts[18])).toString(10)); // refactor
-    assert((await bananas.balanceOf(accounts[19])).gte(web3.utils.toBN(web3.utils.toWei('62.5', 'ether'))), "Reward too small on account 19: " + (await bananas.balanceOf(accounts[19])).toString(10)); // refactor
-    assert((await bananas.balanceOf(accounts[19])).lte(web3.utils.toBN(web3.utils.toWei('62.6', 'ether'))), "Reward too big on account 19" + ": " + (await bananas.balanceOf(accounts[19])).toString(10)); // refactor
+    assert.equal((await bananas.balanceOf(accounts[17])).toString(10), web3.utils.toWei('12.5', 'ether'), "Wrong reward on account 17: " + (await bananas.balanceOf(accounts[17])).toString(10));
+    assert.equal((await bananas.balanceOf(accounts[18])).toString(10), web3.utils.toWei('12.5', 'ether'), "Wrong reward on account 18: " + (await bananas.balanceOf(accounts[18])).toString(10));
+    assert.equal((await bananas.balanceOf(accounts[19])).toString(10), web3.utils.toWei('62.5', 'ether'), "Wrong reward on account 19: " + (await bananas.balanceOf(accounts[19])).toString(10)); // refactor
 
     console.log("Verify that the kong returned to the original owner")
     assert.equal(await kongz.ownerOf(0), accounts[2])
+
+    console.log("Empty account 2")
+    await bananas.transfer(accounts[1], await bananas.balanceOf(accounts[2]), {from: accounts[2], gas: 1e6})
+    assert.equal((await bananas.balanceOf(accounts[2])).toString(10), "0");
+
+    console.log("Deposit 80 bananas from account 1 into Hyksos")
+    await bananas.approve(hyksos.address, web3.utils.toWei('80', 'ether'), {from: accounts[1]})
+    await hyksos.depositErc20(web3.utils.toWei('80', 'ether'), false, { from: accounts[1]});
+    const initAcc1Balance = await bananas.balanceOf(accounts[1]);
+
+    console.log("Deposit Kong in Hyksos")
+    await kongz.approve(hyksos.address, 0,  {from: accounts[2]});
+    await hyksos.depositNft(0, {from: accounts[2], gas: 1e6})
+    assert.equal((await bananas.balanceOf(accounts[2])).toString(10), web3.utils.toWei('80', 'ether'));
+
+    console.log("Increase time by twice the deposit length.")
+    web3.evm.increaseTime(20 * 86400 + 1);
+
+    console.log("Withdraw NFT from owner account and verify reward.")
+    await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
+    
+    assert((await bananas.balanceOf(accounts[2])).gte(web3.utils.toBN(web3.utils.toWei('180', 'ether'))), "Reward too small on account 2: " + (await bananas.balanceOf(accounts[2])).toString(10));
+    assert((await bananas.balanceOf(accounts[2])).lte(web3.utils.toBN(web3.utils.toWei('180.1', 'ether'))), "Reward too big on account 2: " + (await bananas.balanceOf(accounts[2])).toString(10));
+    assert.equal((await bananas.balanceOf(accounts[1])).toString(10), initAcc1Balance.add(web3.utils.toBN(web3.utils.toWei('100', 'ether'))).toString(10));
+
+
 
     console.log("Gas summary:\nKong deposit: %d\nKong withdrawal: %d", 
                 kongApprovalSummary['receipt']['cumulativeGasUsed'] + kongLendSummary['receipt']['cumulativeGasUsed'],
@@ -250,8 +268,7 @@ contract("HyksosCyberkongz test", async () => {
       await hyksos.depositNft(0, {from: accounts[2], gas: 1e6});
       web3.evm.increaseTime(10 * 86400 + 1);
       await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
-      assert((await hyksos.erc20Balance(accounts[1])).gte(web3.utils.toBN(web3.utils.toWei((80 + 20 * i).toString(), 'ether'))), "Reward too small: " + i + ": " + (await hyksos.erc20Balance(accounts[1])).toString(10));
-      assert((await hyksos.erc20Balance(accounts[1])).lte(web3.utils.toBN(web3.utils.toWei((80 + 20 * i + 1).toString(), 'ether'))), "Reward too big: " + i + ": " + (await hyksos.erc20Balance(accounts[1])).toString(10));
+      assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei((80 + 20 * i).toString(), 'ether'), "Wrong reward: " + i + ": " + (await hyksos.erc20Balance(accounts[1])).toString(10));
     }
     console.log("Disable autocompounding")
     await hyksos.setAutoCompoundStrategy(false, {from: accounts[1], gas: 1e6});
@@ -266,7 +283,7 @@ contract("HyksosCyberkongz test", async () => {
     await assertException(hyksos.depositNft(0, {from: accounts[2], gas: 1e6}));
 
 
-    assert((await hyksos.erc20Balance(accounts[1])).lte(web3.utils.toBN(web3.utils.toWei('1.0', 'ether'))), "Balance too big: " + (await hyksos.erc20Balance(accounts[1])).toString(10));
-    assert((await hyksos.totalErc20()).lte(web3.utils.toBN(web3.utils.toWei('1.0', 'ether'))), "Total balance too big: " + (await hyksos.totalErc20()).toString(10));
+    assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), "0", "Balance too big: " + (await hyksos.erc20Balance(accounts[1])).toString(10));
+    assert.equal((await hyksos.totalErc20()).toString(10), "0", "Total balance too big: " + (await hyksos.totalErc20()).toString(10));
   })
 });

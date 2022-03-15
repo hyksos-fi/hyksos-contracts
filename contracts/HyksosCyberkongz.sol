@@ -92,7 +92,7 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
     function distributeRewards(uint256 _reward, uint256 _id) internal {
         // Most probable scenario, so we check it first
         if (msg.sender == depositedKongs[_id].owner) {
-            withdrawNftAndShareRewardEqually(_id, _reward);
+            withdrawNftAndRewardOwner(_id, _reward);
         } else {
             // Check if the caller is one of the shareholders
             for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
@@ -123,6 +123,15 @@ contract HyksosCyberkongz is IHyksos, DepositQueue {
             }
             payRewardAccordingToStrategy(d.sender, payback);
         }
+    }
+
+    function withdrawNftAndRewardOwner(uint256 _id, uint256 _reward) internal {
+        for (uint i = 0; i < depositedKongs[_id].shareholders.length; i++) {
+            Deposit memory d = depositedKongs[_id].shareholders[i];
+            uint256 payback = d.amount * 100 / ROI_PCTG;
+            payRewardAccordingToStrategy(d.sender, payback);
+        }
+        bananas.transfer(depositedKongs[_id].owner, _reward - KONG_WORK_VALUE);
     }
 
     function selectShareholders(uint256 _id) internal {
