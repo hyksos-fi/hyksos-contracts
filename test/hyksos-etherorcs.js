@@ -1,5 +1,4 @@
-const { web3 } = require("hardhat");
-
+const AutoCompound = artifacts.require("AutoCompound");
 const Orcs = artifacts.require("EtherOrcs");
 const Zug = artifacts.require("Zug");
 const Hyksos = artifacts.require("HyksosEtherorcs");
@@ -39,8 +38,11 @@ contract("HyksosEtherorcs test", async () => {
     Orcs.setAsDeployed(orcs, {from: accounts[0]});
     zug = await Zug.new({from: accounts[0]});
     Zug.setAsDeployed(zug);
-    hyksos = await Hyksos.new(zug.address, orcs.address, {from: accounts[0]});
+    autoCompound = await AutoCompound.new({from: accounts[0]});
+    AutoCompound.setAsDeployed(autoCompound);
+    hyksos = await Hyksos.new(zug.address, orcs.address, autoCompound.address, 10 * 86400, 80, {from: accounts[0]});
     Hyksos.setAsDeployed(hyksos);
+
     await orcs.setAdmin({from: accounts[0]});
     await orcs.setZug(zug.address, {from: accounts[0]});
     await orcs.initMint(accounts[0], 0, 3, {from: accounts[0]});
@@ -82,11 +84,20 @@ contract("HyksosEtherorcs test", async () => {
 
   });
 
+  it("Disable autocompounding", async () => {
+    for (let i = 0; i < 20; i++) {
+      assert(await autoCompound.getStrategy(accounts[i]));
+      await autoCompound.setStrategy(false, {from: accounts[i]})
+      assert(!(await autoCompound.getStrategy(accounts[i])));
+    }
+
+  });
+
   it("Deposit and withdraw zug from Hyksos", async () => {
     const initialBalance = await zug.balanceOf(accounts[1]);
     await zug.approve(hyksos.address, web3.utils.toWei('500', 'ether'), {from: accounts[1]})
-    await assertException(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), false, { from: accounts[1]}))
-    await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), false, { from: accounts[1]});
+    await assertException(hyksos.depositErc20(web3.utils.toWei('1000', 'ether'), { from: accounts[1]}))
+    await hyksos.depositErc20(web3.utils.toWei('500', 'ether'), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('500', 'ether'));
     assert.equal((await zug.balanceOf(accounts[1])).toString(10), initialBalance.sub(web3.utils.toBN(web3.utils.toWei('500', 'ether'))).toString(10));
     await hyksos.withdrawErc20(await hyksos.erc20Balance(accounts[1]), { from: accounts[1]});
@@ -108,7 +119,7 @@ contract("HyksosEtherorcs test", async () => {
     console.log("deposit 1000 zug into Hyksos from account 2 and verify amount")
     assert.equal((await zug.balanceOf(accounts[2])).toString(10), "0");
     const zugApprovalSummary = await zug.approve(hyksos.address, web3.utils.toWei('1008', 'ether'), {from: accounts[1]})
-    const zugDepositSummary = await hyksos.depositErc20(web3.utils.toWei('1008', 'ether'), false, { from: accounts[1]});
+    const zugDepositSummary = await hyksos.depositErc20(web3.utils.toWei('1008', 'ether'), { from: accounts[1]});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('1008', 'ether'));
     
     console.log("deposit an Orc into Hyksos from account 2")
@@ -120,13 +131,11 @@ contract("HyksosEtherorcs test", async () => {
     console.log("verify that it's impossible to withdraw an Orc before the due date")
     web3.evm.increaseTime(5 * 86400);
     await assertException(hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6}))
-    
     console.log("withdraw an Orc after the due date")
     web3.evm.increaseTime(5 * 86400 + 1);
     const orcWithdrawalSummary = await hyksos.withdrawNft(0, {from: accounts[2], gas: 1e6})
-
     console.log("verify that the zug donor has received their reward.")
-    assert((await zug.balanceOf(accounts[1])).gte(web3.utils.toBN(web3.utils.toWei((1500 - 1008 + 40).toString(), 'ether'))), "Zug donor has not received their reward");
+    assert((await zug.balanceOf(accounts[1])).gte(web3.utils.toBN(web3.utils.toWei((1500 - 1008 + 40).toString(), 'ether'))), "Zug donor has not received their reward: " + await zug.balanceOf(accounts[1]));
 
     console.log("verify there's a correct amount of zug left in Hyksos")
     assert((await hyksos.erc20Balance(accounts[1])).toString(10) == web3.utils.toWei('976', 'ether'));
@@ -141,7 +150,7 @@ contract("HyksosEtherorcs test", async () => {
     [0] accounts[1] 974
     */
   });
-  // dodać test case z depozytem orka w trakcie farmienia.
+
   it("Complex Orc deposits", async () => {
 
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('976', 'ether'));
@@ -161,7 +170,7 @@ contract("HyksosEtherorcs test", async () => {
     for (let i = 3; i < 20; i++) {
       await zug.transfer(accounts[i], web3.utils.toWei('4', 'ether'), {from: accounts[1], gas: 1e6})
       await zug.approve(hyksos.address, web3.utils.toWei('4', 'ether'), {from: accounts[i]})
-      await hyksos.depositErc20(web3.utils.toWei('4', 'ether'), false, { from: accounts[i]});
+      await hyksos.depositErc20(web3.utils.toWei('4', 'ether'), { from: accounts[i]});
       assert.equal((await hyksos.erc20Balance(accounts[i])).toString(10), web3.utils.toWei('4', 'ether'));
       assert.equal((await zug.balanceOf(accounts[i])).toString(10), "0");
     }
@@ -224,7 +233,7 @@ contract("HyksosEtherorcs test", async () => {
     console.log("Transfer 16 more zug from account 1 to 19, then deposit them into the pool.")
     await zug.transfer(accounts[19], web3.utils.toWei('16', 'ether'), {from: accounts[1], gas: 1e6})
     await zug.approve(hyksos.address, web3.utils.toWei('16', 'ether'), {from: accounts[19]})
-    await hyksos.depositErc20(web3.utils.toWei('16', 'ether'), false, { from: accounts[19]});
+    await hyksos.depositErc20(web3.utils.toWei('16', 'ether'), { from: accounts[19]});
     assert.equal((await hyksos.erc20Balance(accounts[19])).toString(10), web3.utils.toWei('20', 'ether'));
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('32', 'ether'));
     
@@ -258,7 +267,8 @@ contract("HyksosEtherorcs test", async () => {
 
     console.log("Deposit 32 zug from account 1 to pool.")
     await zug.approve(hyksos.address, web3.utils.toWei('32', 'ether'), {from: accounts[1]})
-    await hyksos.depositErc20(web3.utils.toWei('32', 'ether'), true, { from: accounts[1]});
+    await hyksos.depositErc20(web3.utils.toWei('32', 'ether'), { from: accounts[1]});
+    await autoCompound.setStrategy(true, {from: accounts[1], gas: 1e6});
     assert.equal((await hyksos.erc20Balance(accounts[1])).toString(10), web3.utils.toWei('32', 'ether'));
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('32', 'ether'));
 
@@ -272,7 +282,7 @@ contract("HyksosEtherorcs test", async () => {
       assert((await hyksos.erc20Balance(accounts[1])).lte(web3.utils.toBN(web3.utils.toWei((32 + 8 * i + 1).toString(), 'ether'))), "Reward too big: " + i + ": " + (await hyksos.erc20Balance(accounts[1])).toString(10));
     }
     console.log("Disable autocompounding")
-    await hyksos.setAutoCompoundStrategy(false, {from: accounts[1], gas: 1e6});
+    await autoCompound.setStrategy(false, {from: accounts[1], gas: 1e6});
     console.log("The remaining amount should be enough for 3 more deposits.")
     for (let i = 1; i <= 3; i++) {
       await orcs.approve(hyksos.address, 0,  {from: accounts[2]});
