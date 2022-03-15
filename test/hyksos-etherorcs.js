@@ -150,7 +150,6 @@ contract("HyksosEtherorcs test", async () => {
     [0] accounts[1] 974
     */
   });
-
   it("Complex Orc deposits", async () => {
 
     assert.equal((await hyksos.totalErc20()).toString(10), web3.utils.toWei('976', 'ether'));
