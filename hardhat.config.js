@@ -3,7 +3,8 @@
  */
 
  require("@nomiclabs/hardhat-truffle5");
-
+ require("@nomiclabs/hardhat-waffle");
+ let secret = require("./secret.json")
 
  module.exports = {
    solidity: {
@@ -45,6 +46,12 @@
         }
       },
      ]
+   },
+   networks: {
+     rinkeby: {
+      url: secret.url,
+      accounts: [secret.key]
+     }
    }
  };
  
