@@ -53,8 +53,11 @@ if (fs.existsSync("./secret.json")) {
       },
      ]
    },
+   defaultNetwork: "hardhat",
    networks: {
-     rinkeby: {
+    hardhat: {
+    },
+    rinkeby: {
       url: secret.url,
       accounts: [secret.key]
      }
