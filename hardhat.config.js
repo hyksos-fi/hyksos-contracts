@@ -6,7 +6,7 @@ const fs = require("fs");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-waffle");
 
-let secret = {url: "", key: ""};
+let secret = {url: "", key: "0".repeat(64)};
 if (fs.existsSync("./secret.json")) {
   secret = require("./secret.json")
 }
@@ -55,8 +55,7 @@ if (fs.existsSync("./secret.json")) {
    },
    defaultNetwork: "hardhat",
    networks: {
-    hardhat: {
-    },
+    hardhat: {},
     rinkeby: {
       url: secret.url,
       accounts: [secret.key]
