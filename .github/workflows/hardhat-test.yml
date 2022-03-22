@@ -15,6 +15,6 @@ jobs:
           ls ${{ github.workspace }}
       - run: cd ${{ github.workspace }}
       - run: npm install 
-      - run: NODE_OPTIONS=--openssl-legacy-provider bash -c "npx hardhat test"
+      - run: npx hardhat test
       - run: echo "🍏 This job's status is ${{ job.status }}."
 
