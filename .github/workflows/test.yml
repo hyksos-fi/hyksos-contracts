@@ -1,6 +1,5 @@
 name: test
 on: [pull_request]
-  branches: master
 jobs:
   hardhat-test:
     runs-on: ubuntu-latest
