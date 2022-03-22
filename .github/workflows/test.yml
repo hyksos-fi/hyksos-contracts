@@ -1,0 +1,14 @@
+name: test
+on: [pull_request]
+  branches: master
+jobs:
+  hardhat-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - run: cd ${{ github.workspace }}
+      - run: npm install 
+      - run: npx hardhat test
+      
+
