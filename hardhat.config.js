@@ -2,9 +2,15 @@
  * @type import('hardhat/config').HardhatUserConfig
  */
 
- require("@nomiclabs/hardhat-truffle5");
- require("@nomiclabs/hardhat-waffle");
- let secret = require("./secret.json")
+const fs = require("fs");
+require("@nomiclabs/hardhat-truffle5");
+require("@nomiclabs/hardhat-waffle");
+
+let secret = {url: "", key: ""};
+if (fs.existsSync("./secret.json")) {
+  secret = require("./secret.json")
+}
+
 
  module.exports = {
    solidity: {
