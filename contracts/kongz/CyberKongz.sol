@@ -2535,6 +2535,14 @@ contract Kongz is ERC721Namable, Ownable {
 			return _id;
 	}
 
+    function mint(uint256 _id, address _owner) external {
+        bebeCount++;
+        kongz[_id] = Kong(block.timestamp, block.timestamp);
+		_mint(_owner, _id);
+        yieldToken.updateRewardOnMint(_owner, 1);
+		balanceOG[_owner]++;
+    }
+
 	function ascend(uint256 _tokenId, uint256 _genes, bytes calldata _sig) external {
 		require(isValidKong(_tokenId), "Not valid Kong");
 		uint256 id = returnCorrectId(_tokenId);

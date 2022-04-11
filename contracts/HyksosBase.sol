@@ -14,8 +14,8 @@ abstract contract HyksosBase is IHyksos, DepositQueue {
     }
 
     IAutoCompound immutable autoCompound;
-    uint256 immutable roiPctg;
-    uint256 immutable depositLength;
+    uint256 immutable public roiPctg;
+    uint256 immutable public depositLength;
 
     mapping(address => uint256) erc20BalanceMap;
     mapping(uint256 => DepositedNft) depositedNfts;

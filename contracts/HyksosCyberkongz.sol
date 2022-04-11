@@ -19,7 +19,7 @@ contract HyksosCyberkongz is HyksosBase {
     uint256 immutable loanAmount;
 
     uint256 constant BASE_RATE = 10 ether;
-    uint256 constant MIN_DEPOSIT = 10 ether; // TBD
+    uint256 constant MIN_DEPOSIT = 10 ether;
 
 
     constructor(address _bananas, address _kongz, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {

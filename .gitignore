@@ -3,3 +3,5 @@ artifacts/
 .vscode/
 cache/
 secret.json
+coverage/
+coverage.json
