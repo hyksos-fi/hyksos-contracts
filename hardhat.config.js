@@ -58,7 +58,9 @@ if (fs.existsSync("./secret.json")) {
     hardhat: {},
     rinkeby: {
       url: secret.url,
-      accounts: [secret.key]
+      accounts: [secret.key],
+      gas: 2000000,
+      gasPrice: 30000000000,
      }
    }
  };
