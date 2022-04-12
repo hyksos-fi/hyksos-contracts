@@ -22,7 +22,7 @@ contract HyksosEtherorcs is HyksosBase {
     IOrcs immutable nft;
     IERC20 immutable erc20;
 
-    uint256 constant MIN_DEPOSIT = 10 ether; // TBD
+    uint256 constant public MIN_DEPOSIT = 4 ether; // TBD
 
 
     constructor(address _zug, address _orcs, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {
@@ -35,6 +35,7 @@ contract HyksosEtherorcs is HyksosBase {
     }
 
     function depositErc20(uint256 _amount) external override {
+        require(_amount >= MIN_DEPOSIT, "Deposit amount too small.");
         erc20BalanceMap[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalErc20Balance += _amount;
@@ -56,6 +57,7 @@ contract HyksosEtherorcs is HyksosBase {
         depositedNfts[_id].rateModifier = nft.orcs(_id).zugModifier;
         uint256 loanAmount = calcReward(depositLength, depositedNfts[_id].rateModifier) * roiPctg / 100;
         selectShareholders(_id, loanAmount);
+        totalErc20Balance -= loanAmount;
         nft.transferFrom(msg.sender, address(this), _id);
         nft.doAction(_id, IOrcs.Actions.FARMING);
         erc20.transfer(msg.sender, loanAmount);
