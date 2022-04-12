@@ -96,13 +96,12 @@ abstract contract HyksosBase is IHyksos, DepositQueue {
                 setTopDepositAmount(leftAmount);
                 depositedNfts[_id].shareholders.push(Deposit(usedAmount, d.sender));
                 erc20BalanceMap[d.sender] -= usedAmount;
-                totalErc20Balance -= usedAmount;
+
                 return;
             } else {
                 depositedNfts[_id].shareholders.push(Deposit(depositAmount, d.sender));
                 selectedAmount = resultingAmount;
                 erc20BalanceMap[d.sender] -= depositAmount;
-                totalErc20Balance -= depositAmount;
                 popDeposit();
                 if (resultingAmount == _loanAmount) {
                     return;

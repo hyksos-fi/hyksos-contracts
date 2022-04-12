@@ -15,11 +15,11 @@ contract HyksosCyberkongz is HyksosBase {
     
     IKongz immutable nft;
     IERC20 immutable erc20;
-    uint256 immutable kongWorkValue;
-    uint256 immutable loanAmount;
+    uint256 immutable public kongWorkValue;
+    uint256 immutable public loanAmount;
 
-    uint256 constant BASE_RATE = 10 ether;
-    uint256 constant MIN_DEPOSIT = 10 ether;
+    uint256 constant public BASE_RATE = 10 ether;
+    uint256 constant public MIN_DEPOSIT = 10 ether;
 
 
     constructor(address _bananas, address _kongz, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {
@@ -34,6 +34,7 @@ contract HyksosCyberkongz is HyksosBase {
     }
 
     function depositErc20(uint256 _amount) external override {
+        require(_amount >= MIN_DEPOSIT, "Deposit amount too small.");
         erc20BalanceMap[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalErc20Balance += _amount;
@@ -54,6 +55,7 @@ contract HyksosCyberkongz is HyksosBase {
         depositedNfts[_id].timeDeposited = block.timestamp;
         depositedNfts[_id].owner = msg.sender;
         selectShareholders(_id, loanAmount);
+        totalErc20Balance -= loanAmount;
         nft.transferFrom(msg.sender, address(this), _id);
         erc20.transfer(msg.sender, loanAmount);
         emit NftDeposit(msg.sender, _id);
