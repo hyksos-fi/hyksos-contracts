@@ -170,6 +170,7 @@
     "graceful-fs": "^4.2.8",
     "har-schema": "^2.0.0",
     "har-validator": "^5.1.5",
+    "hardhat-gas-reporter": "^1.0.8",
     "has": "^1.0.3",
     "has-bigints": "^1.0.1",
     "has-flag": "^3.0.0",

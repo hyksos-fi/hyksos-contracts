@@ -22,7 +22,7 @@ contract HyksosEtherorcs is HyksosBase {
     IOrcs immutable nft;
     IERC20 immutable erc20;
 
-    uint256 constant public MIN_DEPOSIT = 10 ether; // TBD
+    uint256 constant public MIN_DEPOSIT = 4 ether; // TBD
 
 
     constructor(address _zug, address _orcs, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {

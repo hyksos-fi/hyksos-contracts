@@ -5,6 +5,7 @@
 const fs = require("fs");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-waffle");
+require("hardhat-gas-reporter")
 
 let secret = {url: "", key: "0".repeat(64)};
 if (fs.existsSync("./secret.json")) {
