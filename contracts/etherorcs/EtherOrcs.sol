@@ -382,7 +382,7 @@ function _delegate(address implementation) internal virtual {
         castle = c;
     }
 
-    function initMint(address to, uint256 start, uint256 end) external {
+    function mint(address to, uint256 start, uint256 end) external {
         for (uint256 i = start; i < end; i++) {
             _mint( to, i);
         }

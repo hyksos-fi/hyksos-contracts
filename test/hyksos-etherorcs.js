@@ -45,7 +45,7 @@ contract("HyksosEtherorcs test", async () => {
 
     await orcs.setAdmin({from: accounts[0]});
     await orcs.setZug(zug.address, {from: accounts[0]});
-    await orcs.initMint(accounts[0], 0, 3, {from: accounts[0]});
+    await orcs.mint(accounts[0], 0, 3, {from: accounts[0]});
     await zug.setMinter(orcs.address, true);
     
     // Orcs: %s \nZug: %s \nHyksos: %s \n", orcs.address, zug.address, hyksos.address);
