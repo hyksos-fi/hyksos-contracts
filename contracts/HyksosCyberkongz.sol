@@ -11,21 +11,26 @@ interface IKongz is IERC721 {
     function getReward() external;
 }
 
+interface IBananas is IERC20 {
+    function BASE_RATE() external view returns(uint256);
+}
+
 contract HyksosCyberkongz is HyksosBase {
     
     IKongz immutable nft;
-    IERC20 immutable erc20;
+    IBananas immutable erc20;
     uint256 immutable public kongWorkValue;
     uint256 immutable public loanAmount;
+    uint256 immutable public baseRate;
 
-    uint256 constant public BASE_RATE = 10 ether;
     uint256 constant public MIN_DEPOSIT = 10 ether;
 
 
     constructor(address _bananas, address _kongz, address _autoCompound, uint256 _depositLength, uint256 _roiPctg) HyksosBase(_autoCompound, _depositLength, _roiPctg) {
         nft = IKongz(_kongz);
-        erc20 = IERC20(_bananas);
-        kongWorkValue = BASE_RATE * depositLength / 1 days;
+        erc20 = IBananas(_bananas);
+        baseRate = erc20.BASE_RATE();
+        kongWorkValue = baseRate * depositLength / 1 days;
         loanAmount = kongWorkValue * roiPctg / 100;
     }
 
@@ -75,7 +80,7 @@ contract HyksosCyberkongz is HyksosBase {
         return _id < 1001;
     }
 
-    function calcReward(uint256 _time) internal pure returns(uint256) {
-        return BASE_RATE * _time / 86400;
+    function calcReward(uint256 _time) internal view returns(uint256) {
+        return baseRate * _time / 86400;
     }
 }
