@@ -23,7 +23,7 @@ contract DepositQueue {
         depositQueue.push(Deposit(_amount, _sender));
     }
 
-    function popDeposit() internal nonEmpty returns(Deposit memory) {
+    function popDeposit() internal nonEmpty {
         delete depositQueue[topIndex];
         topIndex++;
     }

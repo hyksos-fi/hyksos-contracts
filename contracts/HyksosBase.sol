@@ -30,48 +30,16 @@ abstract contract HyksosBase is IHyksos, DepositQueue {
     function payErc20(address _receiver, uint256 _amount) internal virtual;
 
     function distributeRewards(uint256 _id, uint256 _reward, uint256 _nftWorkValue) internal {
-        // Most probable scenario, so we check it first
-        if (msg.sender == depositedNfts[_id].owner) {
-            withdrawNftAndRewardOwner(_id, _reward, _nftWorkValue);
-        } else {
-            // Check if the caller is one of the shareholders
-            for (uint i = 0; i < depositedNfts[_id].shareholders.length; i++) {
-                if (msg.sender == depositedNfts[_id].shareholders[i].sender) {
-                    withdrawNftAndRewardClaimant(_id, _reward, i, _nftWorkValue);
-                    return;
-                }
-            }
-            // Method called from account not involved in this lend. Share rewards equally.
-            withdrawNftAndShareRewardEqually(_id, _reward, _nftWorkValue * roiPctg / 100);
-        }
+            withdrawNftAndRewardCaller(_id, _reward, _nftWorkValue);
     }
 
-    function withdrawNftAndShareRewardEqually(uint256 _id, uint256 _reward, uint256 _loanAmount) internal {
-        for (uint i = 0; i < depositedNfts[_id].shareholders.length; i++) {
-            Deposit memory d = depositedNfts[_id].shareholders[i];
-            uint256 payback = d.amount * _reward / _loanAmount;
-            payRewardAccordingToStrategy(d.sender, payback);
-        }
-    }
-
-    function withdrawNftAndRewardClaimant(uint256 _id, uint256 _reward, uint256 _claimantId, uint256 _nftWorkValue) internal {
-        for (uint i = 0; i < depositedNfts[_id].shareholders.length; i++) {
-            Deposit memory d = depositedNfts[_id].shareholders[i];
-            uint256 payback = d.amount * 100 / roiPctg;
-            if (i == _claimantId) {
-                payback += _reward - _nftWorkValue;
-            }
-            payRewardAccordingToStrategy(d.sender, payback);
-        }
-    }
-
-    function withdrawNftAndRewardOwner(uint256 _id, uint256 _reward, uint256 _nftWorkValue) internal {
+    function withdrawNftAndRewardCaller(uint256 _id, uint256 _reward, uint256 _nftWorkValue) internal {
         for (uint i = 0; i < depositedNfts[_id].shareholders.length; i++) {
             Deposit memory d = depositedNfts[_id].shareholders[i];
             uint256 payback = d.amount * 100 / roiPctg;
             payRewardAccordingToStrategy(d.sender, payback);
         }
-        payErc20(depositedNfts[_id].owner, _reward - _nftWorkValue);
+        payErc20(msg.sender, _reward - _nftWorkValue);
     }
 
     function selectShareholders(uint256 _id, uint256 _loanAmount) internal {

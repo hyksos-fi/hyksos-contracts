@@ -22,7 +22,6 @@ contract HyksosCyberkongz is HyksosBase {
     uint256 immutable public kongWorkValue;
     uint256 immutable public loanAmount;
     uint256 immutable public baseRate;
-
     uint256 constant public MIN_DEPOSIT = 10 ether;
 
 
