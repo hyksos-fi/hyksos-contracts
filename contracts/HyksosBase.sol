@@ -13,7 +13,7 @@ abstract contract HyksosBase is IHyksos, DepositQueue {
         Deposit[] shareholders;
     }
 
-    IAutoCompound immutable autoCompound;
+    IAutoCompound immutable public autoCompound;
     uint256 immutable public roiPctg;
     uint256 immutable public depositLength;
 

@@ -236,12 +236,9 @@ contract("HyksosEtherorcs test", async () => {
     await hyksos.withdrawNft(0, {from: accounts[16], gas: 1e6})
     assert((await zug.balanceOf(accounts[16])).gte(web3.utils.toBN(web3.utils.toWei('45', 'ether'))), "Reward too small on account 16: " + (await zug.balanceOf(accounts[16])).toString(10)); // refactor
     assert((await zug.balanceOf(accounts[16])).lte(web3.utils.toBN(web3.utils.toWei('45.1', 'ether'))), "Reward too big on account 16: " + (await zug.balanceOf(accounts[16])).toString(10)); // refactor
-    assert((await zug.balanceOf(accounts[17])).gte(web3.utils.toBN(web3.utils.toWei('5', 'ether'))), "Reward too small on account 17: " + (await zug.balanceOf(accounts[17])).toString(10)); // refactor
-    assert((await zug.balanceOf(accounts[17])).lte(web3.utils.toBN(web3.utils.toWei('5.1', 'ether'))), "Reward too big on account 17: " + (await zug.balanceOf(accounts[17])).toString(10)); // refactor
-    assert((await zug.balanceOf(accounts[18])).gte(web3.utils.toBN(web3.utils.toWei('5', 'ether'))), "Reward too small on account 18: " + (await zug.balanceOf(accounts[18])).toString(10)); // refactor
-    assert((await zug.balanceOf(accounts[18])).lte(web3.utils.toBN(web3.utils.toWei('5.1', 'ether'))), "Reward too big on account 18: " + (await zug.balanceOf(accounts[18])).toString(10)); // refactor
-    assert((await zug.balanceOf(accounts[19])).gte(web3.utils.toBN(web3.utils.toWei('25', 'ether'))), "Reward too small on account 19: " + (await zug.balanceOf(accounts[19])).toString(10)); // refactor
-    assert((await zug.balanceOf(accounts[19])).lte(web3.utils.toBN(web3.utils.toWei('25', 'ether'))), "Reward too big on account 19" + ": " + (await zug.balanceOf(accounts[19])).toString(10)); // refactor
+    assert.equal((await zug.balanceOf(accounts[17])).toString(10), web3.utils.toWei('5', 'ether'));
+    assert.equal((await zug.balanceOf(accounts[18])).toString(10), web3.utils.toWei('5', 'ether'));
+    assert.equal((await zug.balanceOf(accounts[19])).toString(10), web3.utils.toWei('25', 'ether'));
 
     // Verify that the orc returned to the original owner
     assert.equal(await orcs.ownerOf(0), accounts[2])
