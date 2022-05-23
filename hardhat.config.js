@@ -17,7 +17,7 @@ if (fs.existsSync("./secret.json")) {
    solidity: {
      compilers: [
        {
-         version: "0.8.11",
+         version: "0.8.10",
          settings: {
            optimizer: {
              enabled: true,

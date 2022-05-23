@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.10;
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
@@ -16,8 +16,8 @@ interface IBananas is IERC20 {
 
 contract HyksosCyberkongz is HyksosBase {
     
-    IKongz immutable nft;
-    IBananas immutable erc20;
+    IKongz immutable public nft;
+    IBananas immutable public erc20;
     uint256 immutable public kongWorkValue;
     uint256 immutable public loanAmount;
     uint256 immutable public baseRate;
@@ -33,7 +33,7 @@ contract HyksosCyberkongz is HyksosBase {
     }
 
     function payErc20(address _receiver, uint256 _amount) internal override {
-        erc20.transfer(_receiver, _amount);
+        require(erc20.transfer(_receiver, _amount));
     }
 
     function depositErc20(uint256 _amount) external override {
@@ -41,7 +41,7 @@ contract HyksosCyberkongz is HyksosBase {
         erc20BalanceMap[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalErc20Balance += _amount;
-        erc20.transferFrom(msg.sender, address(this), _amount);
+        require(erc20.transferFrom(msg.sender, address(this), _amount));
         emit Erc20Deposit(msg.sender, _amount);
     }
 
@@ -49,7 +49,7 @@ contract HyksosCyberkongz is HyksosBase {
         require(_amount <= erc20BalanceMap[msg.sender], "Withdrawal amount too big.");
         totalErc20Balance -= _amount;
         erc20BalanceMap[msg.sender] -= _amount;
-        erc20.transfer(msg.sender, _amount);
+        require(erc20.transfer(msg.sender, _amount));
         emit Erc20Withdrawal(msg.sender, _amount);
     }
 
@@ -60,7 +60,7 @@ contract HyksosCyberkongz is HyksosBase {
         selectShareholders(_id, loanAmount);
         totalErc20Balance -= loanAmount;
         nft.transferFrom(msg.sender, address(this), _id);
-        erc20.transfer(msg.sender, loanAmount);
+        require(erc20.transfer(msg.sender, loanAmount));
         emit NftDeposit(msg.sender, _id);
     }
 

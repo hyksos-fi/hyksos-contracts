@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.10;
 
 contract DepositQueue {
     struct Deposit {
@@ -7,8 +7,8 @@ contract DepositQueue {
         address sender;
     }
 
-    Deposit[] depositQueue;
-    uint256 topIndex;
+    Deposit[] private depositQueue;
+    uint256 private topIndex;
 
     function isDepositQueueEmpty() internal view returns(bool) {
         return depositQueue.length <= topIndex;
@@ -36,7 +36,7 @@ contract DepositQueue {
         depositQueue[topIndex].amount = _amount;
     }
 
-    function numDeposits() external view returns(uint256) {
+    function numDeposits() public view returns(uint256) {
         return depositQueue.length - topIndex;
     }
 

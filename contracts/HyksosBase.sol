@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.10;
 
 import './DepositQueue.sol';
 import './IHyksos.sol';
@@ -17,9 +17,9 @@ abstract contract HyksosBase is IHyksos, DepositQueue {
     uint256 immutable public roiPctg;
     uint256 immutable public depositLength;
 
-    mapping(address => uint256) erc20BalanceMap;
-    mapping(uint256 => DepositedNft) depositedNfts;
-    uint256 totalErc20Balance;
+    mapping(address => uint256) internal erc20BalanceMap;
+    mapping(uint256 => DepositedNft) internal depositedNfts;
+    uint256 internal totalErc20Balance;
 
     constructor(address _autoCompound, uint256 _depositLength, uint256 _roiPctg) {
         autoCompound = IAutoCompound(_autoCompound);
@@ -44,27 +44,31 @@ abstract contract HyksosBase is IHyksos, DepositQueue {
 
     function selectShareholders(uint256 _id, uint256 _loanAmount) internal {
         require(totalErc20Balance >= _loanAmount, "Not enough erc-20 tokens in pool to fund a loan.");
-        uint256 selectedAmount = 0;
+        // loop variables
+        uint256 selectedAmount;
+        uint256 depositAmount;
+        uint256 resultingAmount;
+        uint256 usedAmount;
+        uint256 leftAmount;
+
         while (!isDepositQueueEmpty()) {
             Deposit memory d = getTopDeposit();
             if (erc20BalanceMap[d.sender] == 0) {
                 popDeposit();
                 continue;
             }
-            uint256 depositAmount;
             if (erc20BalanceMap[d.sender] < d.amount) {
                 depositAmount = erc20BalanceMap[d.sender];
             } else {
                 depositAmount = d.amount;
             }
-            uint256 resultingAmount = selectedAmount + depositAmount;
+            resultingAmount = selectedAmount + depositAmount;
             if (resultingAmount > _loanAmount) {
-                uint256 usedAmount = _loanAmount - selectedAmount;
-                uint256 leftAmount = depositAmount - usedAmount;
+                usedAmount = _loanAmount - selectedAmount;
+                leftAmount = depositAmount - usedAmount;
                 setTopDepositAmount(leftAmount);
                 depositedNfts[_id].shareholders.push(Deposit(usedAmount, d.sender));
                 erc20BalanceMap[d.sender] -= usedAmount;
-
                 return;
             } else {
                 depositedNfts[_id].shareholders.push(Deposit(depositAmount, d.sender));

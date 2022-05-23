@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.10;
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
@@ -18,8 +18,8 @@ interface IOrcs is IERC721 {
 
 contract HyksosEtherorcs is HyksosBase {
     
-    IOrcs immutable nft;
-    IERC20 immutable erc20;
+    IOrcs immutable public nft;
+    IERC20 immutable public erc20;
 
     uint256 constant public MIN_DEPOSIT = 4 ether; // TBD
 
@@ -38,7 +38,7 @@ contract HyksosEtherorcs is HyksosBase {
         erc20BalanceMap[msg.sender] += _amount;
         pushDeposit(_amount, msg.sender);
         totalErc20Balance += _amount;
-        erc20.transferFrom(msg.sender, address(this), _amount);
+        require(erc20.transferFrom(msg.sender, address(this), _amount));
         emit Erc20Deposit(msg.sender, _amount);
     }
 
@@ -46,7 +46,7 @@ contract HyksosEtherorcs is HyksosBase {
         require(_amount <= erc20BalanceMap[msg.sender], "Withdrawal amount too big.");
         totalErc20Balance -= _amount;
         erc20BalanceMap[msg.sender] -= _amount;
-        erc20.transfer(msg.sender, _amount);
+        require(erc20.transfer(msg.sender, _amount));
         emit Erc20Withdrawal(msg.sender, _amount);
     }
 
@@ -59,7 +59,7 @@ contract HyksosEtherorcs is HyksosBase {
         totalErc20Balance -= loanAmount;
         nft.transferFrom(msg.sender, address(this), _id);
         nft.doAction(_id, IOrcs.Actions.FARMING);
-        erc20.transfer(msg.sender, loanAmount);
+        require(erc20.transfer(msg.sender, loanAmount));
         emit NftDeposit(msg.sender, _id);
     }
 
