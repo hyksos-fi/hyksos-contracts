@@ -1,5 +1,5 @@
 # Hyksos
-Smart contracts for Hyksos ecosystem. Hyksos is a first self-repaying platform to lend and borrow in the non-fungible tokens (NFT) space. It's a next-gen scalable NFT financial P2P agreement protocol. Check out the documentation at [gitbook](https://app.gitbook.com/o/vtU0b8FUHl8ujmJcOVK2/s/ll2GVRaa5jdkYVfBqA4A/hyksos-overview)
+Smart contracts for Hyksos ecosystem. Hyksos is a first self-repaying platform to lend and borrow in the non-fungible tokens (NFT) space. It's a next-gen scalable NFT financial P2P agreement protocol. Check out the documentation at [gitbook](https://app.gitbook.com/o/vtU0b8FUHl8ujmJcOVK2/s/ll2GVRaa5jdkYVfBqA4A/hyksos-overview).
 
 ## Architecture
 
