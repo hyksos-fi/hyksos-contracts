@@ -1,7 +1,7 @@
 async function main() {
-  const kongzAddress = "0xb1002D3dA512F82F8020C1aed1eC9B5a1Fb35296"; 
-  const bananasAddress = "0xA70768852B80599E501249087c04b1e8BA9A608d";
-  const autoCompoundAddress = "0xf22179b3fb95fDAb47f4DE2b055db70740889a9C"
+  const kongzAddress = "0x0D293c104457675933feB107cdA873a7E0DD7c48"; 
+  const bananasAddress = "0x5D604AbDaDCe2B0E12970D8089C5Ac4BcADD1800";
+  const autoCompoundAddress = "0xD2A1Ba81a88E2987b0fe5614adc94BE3782Ef9d0"
 
   const Hyksos = await ethers.getContractFactory("HyksosCyberkongz");
 
