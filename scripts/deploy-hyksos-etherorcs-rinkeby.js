@@ -1,7 +1,7 @@
 async function main() {
-  const zugAddress = "0xED350B20a213a14A99adC1F4173943cA2ed6fd9F"; 
-  const orcsAddress = "0x0CEc2D691315BF182F47f7092755dAe149bDf1b9";
-  const autoCompoundAddress = "0x50f8629dc1f7d8820c26b45908eF7Bc4fd6D7E9a"
+  const zugAddress = "0x71457Ed3B0cb7B73F1D8D03EA242FbFAE688CC35"; 
+  const orcsAddress = "0xb60c71aB4A966f32491D6341D6184d4A5e6270B6";
+  const autoCompoundAddress = "0x557E6C7Cfb0D33eb00ABdc827D9E85438Da72AcA"
 
   const Hyksos = await ethers.getContractFactory("HyksosEtherorcs");
 

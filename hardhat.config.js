@@ -5,9 +5,10 @@
 const fs = require("fs");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-waffle");
-require("hardhat-gas-reporter")
+require("@nomiclabs/hardhat-etherscan");
+require("hardhat-gas-reporter");
 
-let secret = {url: "", key: "0".repeat(64)};
+let secret = {urls: {goerli: "", polygon: "", ethereum: ""}, key: "0".repeat(64), apiKeys: {polygon: "", ethereum: ""}};
 if (fs.existsSync("./secret.json")) {
   secret = require("./secret.json")
 }
@@ -57,12 +58,27 @@ if (fs.existsSync("./secret.json")) {
    defaultNetwork: "hardhat",
    networks: {
     hardhat: {},
-    rinkeby: {
-      url: secret.url,
+    goerli: {
+      url: secret.urls.goerli,
       accounts: [secret.key],
       gas: 2000000,
       gasPrice: 30000000000,
+     },
+     polygon: {
+      url: secret.urls.polygon,
+      accounts: [secret.key]
+     },
+     ethereum: {
+      url: secret.urls.ethereum,
+      accounts: [secret.key]
      }
-   }
+   },
+
+   etherscan: {
+    apiKey: {
+      polygon: secret.apiKeys.polygon,
+      ethereum: secret.apiKeys.ethereum,
+    },
+  }
  };
  
