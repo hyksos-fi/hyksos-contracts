@@ -8,7 +8,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
 
-let secret = {url: "", key: "0".repeat(64)};
+let secret = {urls: {goerli: "", polygon: "", ethereum: ""}, key: "0".repeat(64), apiKeys: {polygon: "", ethereum: ""}};
 if (fs.existsSync("./secret.json")) {
   secret = require("./secret.json")
 }
