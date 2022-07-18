@@ -1,6 +1,6 @@
 async function main() {
-    const zugAddress = "0xeb45921FEDaDF41dF0BfCF5c33453aCedDA32441"; 
-    const orcsAddress = "0x84698a8EE5B74eB29385134886b3a182660113e4";
+    const zugAddress = "0xfEE5F54e1070e7eD31Be341e0A5b1E847f6a84Ab"; 
+    const orcsAddress = "0x3aBEDBA3052845CE3f57818032BFA747CDED3fca";
     const autoCompoundAddress = "0xcF46D7482C75129C4CE4C2ddF25BcA842DEE3F97"
 
     const depositLengthDaysShort = 30;

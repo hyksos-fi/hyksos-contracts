@@ -77,7 +77,7 @@ if (fs.existsSync("./secret.json")) {
    etherscan: {
     apiKey: {
       polygon: secret.apiKeys.polygon,
-      ethereum: secret.apiKeys.ethereum,
+      mainnet: secret.apiKeys.ethereum,
     },
   }
  };
